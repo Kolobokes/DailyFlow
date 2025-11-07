@@ -1,0 +1,143 @@
+package com.dailyflow.app.ui.screen
+
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
+import com.dailyflow.app.ui.components.SwipeableTaskCard
+import com.dailyflow.app.ui.navigation.Screen
+import com.dailyflow.app.ui.viewmodel.TasksViewModel
+import kotlinx.coroutines.launch
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@Composable
+fun TasksScreen(
+    navController: NavController,
+    viewModel: TasksViewModel = hiltViewModel()
+) {
+    val groupedTasks by viewModel.groupedTasks.collectAsState()
+    val categories by viewModel.categories.collectAsState()
+    val filterDate by viewModel.filterDate.collectAsState()
+    val showCancelled by viewModel.showCancelled.collectAsState()
+    val showOverdue by viewModel.showOverdue.collectAsState()
+    val showCompleted by viewModel.showCompleted.collectAsState()
+    
+    var showDatePicker by remember { mutableStateOf(false) }
+    val datePickerState = rememberDatePickerState()
+    val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(groupedTasks) {
+        val today = LocalDate.now()
+        val todayIndex = groupedTasks.keys.indexOf(today)
+        if (todayIndex != -1) {
+            coroutineScope.launch {
+                // Calculate the exact index to scroll to
+                val scrollIndex = groupedTasks.keys.take(todayIndex).sumOf { groupedTasks[it]?.size ?: 0 } + todayIndex
+                listState.animateScrollToItem(index = scrollIndex)
+            }
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Все задачи") },
+                actions = {
+                    IconButton(onClick = { showDatePicker = true }) {
+                        Icon(Icons.Default.FilterList, contentDescription = "Фильтр по дате")
+                    }
+                    if (filterDate != null) {
+                        IconButton(onClick = { viewModel.setFilterDate(null) }) {
+                            Icon(Icons.Default.FilterListOff, contentDescription = "Сбросить фильтр")
+                        }
+                    }
+                }
+            )
+        }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(it)
+                .padding(horizontal = 16.dp)
+        ) {
+            if (showDatePicker) {
+                DatePickerDialog(
+                    onDismissRequest = { showDatePicker = false },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            datePickerState.selectedDateMillis?.let {
+                                val selectedDate = Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate()
+                                viewModel.setFilterDate(selectedDate)
+                            }
+                            showDatePicker = false
+                        }) {
+                            Text("OK")
+                        }
+                    },
+                    dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("Отмена") } }
+                ) {
+                    DatePicker(state = datePickerState)
+                }
+            }
+            
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround, verticalAlignment = Alignment.CenterVertically) {
+                FilterChip(selected = showOverdue, onClick = { viewModel.toggleShowOverdue(!showOverdue) }, label = { Text("Просроченные") })
+                FilterChip(selected = showCompleted, onClick = { viewModel.toggleShowCompleted(!showCompleted) }, label = { Text("Выполненные") })
+                FilterChip(selected = showCancelled, onClick = { viewModel.toggleShowCancelled(!showCancelled) }, label = { Text("Отмененные") })
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (groupedTasks.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Нет задач для отображения")
+                }
+            } else {
+                LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    groupedTasks.forEach { (date, tasks) ->
+                        stickyHeader {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant).padding(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = date.format(DateTimeFormatter.ofPattern("dd MMMM yyyy")),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                        items(tasks) { task ->
+                            SwipeableTaskCard(
+                                task = task,
+                                category = categories.find { cat -> cat.id == task.categoryId },
+                                onClick = { navController.navigate(Screen.TaskDetail.createRoute(task.id)) },
+                                onToggle = { isCompleted -> viewModel.toggleTaskCompletion(task.id, isCompleted) },
+                                onDelete = { viewModel.deleteTask(task.id) },
+                                onCancel = { viewModel.cancelTask(task.id) }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

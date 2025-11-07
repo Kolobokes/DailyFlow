@@ -1,0 +1,13 @@
+package com.dailyflow.app
+
+import android.app.Application
+import dagger.hilt.android.HiltAndroidApp
+
+@HiltAndroidApp
+class DailyFlowApplication : Application() {
+    
+    override fun onCreate() {
+        super.onCreate()
+        // Initialize any global components here
+    }
+}

@@ -1,0 +1,73 @@
+<resources>
+    <string name="app_name">DailyFlow</string>
+    
+    <!-- Navigation -->
+    <string name="nav_home">Главная</string>
+    <string name="nav_tasks">Задачи</string>
+    <string name="nav_notes">Заметки</string>
+    <string name="nav_statistics">Статистика</string>
+    <string name="nav_settings">Настройки</string>
+    
+    <!-- Common -->
+    <string name="add">Добавить</string>
+    <string name="save">Сохранить</string>
+    <string name="cancel">Отмена</string>
+    <string name="delete">Удалить</string>
+    <string name="edit">Редактировать</string>
+    <string name="done">Готово</string>
+    <string name="search">Поиск</string>
+    
+    <!-- Tasks -->
+    <string name="task_title">Название задачи</string>
+    <string name="task_description">Описание</string>
+    <string name="task_category">Категория</string>
+    <string name="task_priority">Приоритет</string>
+    <string name="task_date_time">Дата и время</string>
+    <string name="task_reminder">Напоминание</string>
+    
+    <!-- Priority -->
+    <string name="priority_low">Низкий</string>
+    <string name="priority_medium">Средний</string>
+    <string name="priority_high">Высокий</string>
+    
+    <!-- Status -->
+    <string name="status_pending">В ожидании</string>
+    <string name="status_completed">Выполнено</string>
+    <string name="status_cancelled">Отменено</string>
+    
+    <!-- Notes -->
+    <string name="note_title">Заголовок заметки</string>
+    <string name="note_content">Содержимое</string>
+    
+    <!-- Categories -->
+    <string name="category_name">Название категории</string>
+    <string name="category_color">Цвет</string>
+    <string name="category_icon">Иконка</string>
+    
+    <!-- Overdue -->
+    <string name="overdue_tasks">Просроченные дела</string>
+    <string name="overdue_count">Просроченных дел: %d</string>
+    
+    <!-- Progress -->
+    <string name="daily_progress">Прогресс дня</string>
+    <string name="progress_percentage">%d%%</string>
+    
+    <!-- Voice -->
+    <string name="voice_input">Голосовой ввод</string>
+    <string name="voice_input_error">Ошибка голосового ввода</string>
+    
+    <!-- Export -->
+    <string name="export_data">Экспорт данных</string>
+    <string name="export_format">Формат экспорта</string>
+    
+    <!-- Permissions -->
+    <string name="permission_microphone">Разрешение на использование микрофона</string>
+    <string name="permission_notifications">Разрешение на уведомления</string>
+    <string name="permission_storage">Разрешение на доступ к хранилищу</string>
+    
+    <!-- Settings -->
+    <string name="settings_theme">Тема</string>
+    <string name="settings_notifications">Уведомления</string>
+    <string name="settings_backup">Резервное копирование</string>
+    <string name="settings_privacy">Конфиденциальность</string>
+</resources>
