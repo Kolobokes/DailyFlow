@@ -6,13 +6,21 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.DismissDirection
+import androidx.compose.material.DismissValue
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.SwipeToDismiss
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.rememberDismissState
 import androidx.compose.material3.*
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -23,9 +31,8 @@ import com.dailyflow.app.ui.theme.*
 import java.time.LocalTime
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Undo
 
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
 fun TimeSlotItem(
     timeSlot: LocalTime,
@@ -133,20 +140,100 @@ fun TimeSlotItem(
 @Composable
 fun ContinuingTaskCard(task: Task, category: Category?) {
     val isOverdue = task.startDateTime?.isBefore(LocalDateTime.now()) == true && task.status == TaskStatus.PENDING
-    
+    val background = when (task.status) {
+        TaskStatus.COMPLETED -> Color(0xFF4CAF50).copy(alpha = 0.12f)
+        TaskStatus.CANCELLED -> Color(0xFFE53935).copy(alpha = 0.12f)
+        TaskStatus.PENDING -> category?.color?.let { Color(android.graphics.Color.parseColor(it)) }?.copy(alpha = 0.2f)
+            ?: MaterialTheme.colorScheme.surfaceVariant
+    }
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(20.dp)
             .background(
-                color = when {
-                    task.status == TaskStatus.COMPLETED -> Color.LightGray.copy(alpha = 0.4f)
-                    isOverdue -> OverdueColor.copy(alpha = 0.2f)
-                    else -> category?.color?.let { Color(android.graphics.Color.parseColor(it)) }?.copy(alpha = 0.2f)
-                        ?: MaterialTheme.colorScheme.surfaceVariant
-                },
+                color = if (isOverdue && task.status == TaskStatus.PENDING) OverdueColor.copy(alpha = 0.2f) else background,
                 shape = RoundedCornerShape(4.dp)
             )
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
+@Composable
+fun SwipeableTaskCard(
+    task: Task,
+    category: Category?,
+    onClick: () -> Unit,
+    onToggle: (Boolean) -> Unit,
+    onDelete: () -> Unit,
+    onCancel: () -> Unit,
+    modifier: Modifier = Modifier,
+    containerColorOverride: Color? = null
+) {
+    val dismissState = rememberDismissState(
+        confirmStateChange = { dismissValue ->
+            when (dismissValue) {
+                DismissValue.DismissedToEnd -> {
+                    onToggle(true)
+                    true
+                }
+                DismissValue.DismissedToStart -> {
+                    onToggle(false)
+                    true
+                }
+                else -> false
+            }
+        }
+    )
+
+    SwipeToDismiss(
+        state = dismissState,
+        directions = setOf(DismissDirection.StartToEnd, DismissDirection.EndToStart),
+        background = {
+            val direction = dismissState.dismissDirection ?: return@SwipeToDismiss
+            val completing = direction == DismissDirection.StartToEnd && task.status != TaskStatus.COMPLETED
+            val returning = direction == DismissDirection.EndToStart && task.status == TaskStatus.COMPLETED
+            val bgColor = when {
+                completing -> MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
+                returning -> MaterialTheme.colorScheme.secondary.copy(alpha = 0.35f)
+                else -> MaterialTheme.colorScheme.surfaceVariant
+            }
+            val icon = when {
+                completing -> Icons.Default.Check
+                returning -> Icons.AutoMirrored.Filled.Undo
+                else -> Icons.Default.Check
+            }
+            val label = when {
+                completing -> "Выполнить"
+                returning -> "Вернуть"
+                else -> "Действие"
+            }
+            val alignment = if (direction == DismissDirection.StartToEnd) Alignment.CenterStart else Alignment.CenterEnd
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(bgColor)
+                    .padding(horizontal = 20.dp),
+                contentAlignment = alignment
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(icon, contentDescription = label, tint = MaterialTheme.colorScheme.onPrimary)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(label, color = MaterialTheme.colorScheme.onPrimary)
+                }
+            }
+        },
+        dismissContent = {
+            TaskCard(
+                task = task,
+                category = category,
+                onClick = onClick,
+                onToggle = onToggle,
+                onDelete = onDelete,
+                onCancel = onCancel,
+                modifier = modifier,
+                containerColorOverride = containerColorOverride
+            )
+        }
     )
 }
 
@@ -162,29 +249,31 @@ fun TaskCard(
     containerColorOverride: Color? = null
 ) {
     val isOverdue = task.startDateTime?.isBefore(LocalDateTime.now()) == true && task.status == TaskStatus.PENDING
-    var showMenu by remember { mutableStateOf(false) }
-
     val priorityColor = when (task.priority) {
         Priority.HIGH -> HighPriorityColor
         Priority.MEDIUM -> MediumPriorityColor
         Priority.LOW -> LowPriorityColor
     }
-
     val isCancelled = task.status == TaskStatus.CANCELLED
-    val categoryColor = category?.color?.let { Color(android.graphics.Color.parseColor(it)) } ?: Color.White
-    val baseColor = containerColorOverride ?: categoryColor
-    val containerColor = when {
-        task.status == TaskStatus.COMPLETED -> baseColor.copy(alpha = 0.45f)
-        isCancelled -> baseColor.copy(alpha = 0.35f)
-        isOverdue -> baseColor.copy(alpha = 0.6f)
-        else -> baseColor
+    val (statusColor, statusLabel) = when (task.status) {
+        TaskStatus.COMPLETED -> Color(0xFF4CAF50) to "Выполнена"
+        TaskStatus.CANCELLED -> Color(0xFFE53935) to "Отменена"
+        TaskStatus.PENDING -> MaterialTheme.colorScheme.secondary to "В работе"
+    }
+
+    val baseContainerColor = containerColorOverride ?: when (task.status) {
+        TaskStatus.COMPLETED -> Color(0xFF4CAF50).copy(alpha = 0.12f)
+        TaskStatus.CANCELLED -> Color(0xFFE53935).copy(alpha = 0.12f)
+        TaskStatus.PENDING -> category?.color?.let { Color(android.graphics.Color.parseColor(it)) }?.copy(alpha = 0.2f)
+            ?: MaterialTheme.colorScheme.surfaceVariant
     }
 
     Card(
         modifier = modifier
             .fillMaxSize()
+            .statusMarker(statusColor)
             .clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = containerColor)
+        colors = CardDefaults.cardColors(containerColor = baseContainerColor)
     ) {
         Row(
             modifier = Modifier.padding(start = 16.dp, end = 4.dp, top = 12.dp, bottom = 12.dp),
@@ -195,20 +284,18 @@ fun TaskCard(
                     text = task.title,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
-                    textDecoration = if (task.status == TaskStatus.COMPLETED || isCancelled) 
+                    textDecoration = if (task.status == TaskStatus.COMPLETED || isCancelled)
                         TextDecoration.LineThrough else TextDecoration.None,
-                    color = if (task.status == TaskStatus.COMPLETED || isCancelled) 
+                    color = if (task.status == TaskStatus.COMPLETED || isCancelled)
                         MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     else MaterialTheme.colorScheme.onSurface
                 )
-                
                 val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
                 val timeText = if (task.startDateTime != null && task.endDateTime != null) {
                     "${task.startDateTime.format(timeFormatter)} - ${task.endDateTime.format(timeFormatter)}"
                 } else {
                     task.startDateTime?.format(timeFormatter) ?: ""
                 }
-
                 if (timeText.isNotEmpty()) {
                     Text(
                         text = timeText,
@@ -216,15 +303,25 @@ fun TaskCard(
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                     )
                 }
-                
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    Box(
+                        modifier = Modifier
+                            .background(statusColor.copy(alpha = 0.15f), shape = CircleShape)
+                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = statusLabel,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = statusColor
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
                     if (isOverdue) {
                         Icon(Icons.Default.Warning, "Просрочено", tint = OverdueColor, modifier = Modifier.size(12.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                     }
-
                     category?.let { cat ->
                         Icon(
                             getCategoryIcon(cat.icon),
@@ -240,7 +337,6 @@ fun TaskCard(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                     }
-                    
                     Box(
                         modifier = Modifier
                             .size(8.dp)
@@ -249,6 +345,7 @@ fun TaskCard(
                     )
                 }
             }
+            var showMenu by remember { mutableStateOf(false) }
             Box {
                 IconButton(onClick = { showMenu = true }) {
                     Icon(Icons.Default.MoreVert, contentDescription = "Действия")
@@ -272,17 +369,17 @@ fun TaskCard(
                     )
                     DropdownMenuItem(
                         text = { Text("Отменить") },
-                        onClick = { 
+                        onClick = {
                             onCancel()
-                            showMenu = false 
+                            showMenu = false
                         },
                         leadingIcon = { Icon(Icons.Default.Cancel, contentDescription = null) }
                     )
                     DropdownMenuItem(
                         text = { Text("Удалить") },
-                        onClick = { 
+                        onClick = {
                             onDelete()
-                            showMenu = false 
+                            showMenu = false
                         },
                         leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) }
                     )
@@ -291,6 +388,15 @@ fun TaskCard(
         }
     }
 }
+
+private fun Modifier.statusMarker(color: Color): Modifier =
+    this.drawBehind {
+        drawRect(
+            color = color,
+            topLeft = androidx.compose.ui.geometry.Offset.Zero,
+            size = androidx.compose.ui.geometry.Size(4.dp.toPx(), size.height)
+        )
+    }
 
 @Composable
 fun NoteCard(

@@ -5,12 +5,16 @@ import androidx.lifecycle.viewModelScope
 import com.dailyflow.app.data.model.Category
 import com.dailyflow.app.data.model.Task
 import com.dailyflow.app.data.model.TaskStatus
+import com.dailyflow.app.data.model.RecurrenceScope
 import com.dailyflow.app.data.repository.CategoryRepository
 import com.dailyflow.app.data.repository.TaskRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
@@ -57,6 +61,11 @@ class OverdueViewModel @Inject constructor(
             initialValue = emptyList()
         )
 
+    private val _recurringActionDialog = MutableSharedFlow<RecurringActionDialogState>()
+    val recurringActionDialog: SharedFlow<RecurringActionDialogState> = _recurringActionDialog.asSharedFlow()
+
+    private var pendingRecurringAction: PendingRecurringAction? = null
+
     fun completeTask(taskId: String) {
         viewModelScope.launch {
             taskRepository.updateTaskStatus(taskId, TaskStatus.COMPLETED)
@@ -65,15 +74,41 @@ class OverdueViewModel @Inject constructor(
 
     fun cancelTask(taskId: String) {
         viewModelScope.launch {
-            taskRepository.updateTaskStatus(taskId, TaskStatus.CANCELLED)
+            val task = taskRepository.getTaskById(taskId) ?: return@launch
+            if (task.seriesId.isNullOrBlank()) {
+                taskRepository.updateTaskStatus(taskId, TaskStatus.CANCELLED)
+            } else {
+                pendingRecurringAction = PendingRecurringAction(task, RecurringActionType.CANCEL)
+                _recurringActionDialog.emit(RecurringActionDialogState(task, RecurringActionType.CANCEL))
+            }
         }
     }
 
     fun deleteTask(taskId: String) {
         viewModelScope.launch {
-            val task = taskRepository.getTaskById(taskId)
-            task?.let { taskRepository.deleteTask(it) }
+            val task = taskRepository.getTaskById(taskId) ?: return@launch
+            if (task.seriesId.isNullOrBlank()) {
+                taskRepository.deleteTask(task)
+            } else {
+                pendingRecurringAction = PendingRecurringAction(task, RecurringActionType.DELETE)
+                _recurringActionDialog.emit(RecurringActionDialogState(task, RecurringActionType.DELETE))
+            }
         }
+    }
+
+    fun onRecurringActionScopeSelected(scope: RecurrenceScope) {
+        val pending = pendingRecurringAction ?: return
+        viewModelScope.launch {
+            when (pending.actionType) {
+                RecurringActionType.DELETE -> taskRepository.deleteRecurringTask(pending.task.id, scope)
+                RecurringActionType.CANCEL -> taskRepository.cancelRecurringTask(pending.task.id, scope)
+            }
+            pendingRecurringAction = null
+        }
+    }
+
+    fun dismissRecurringActionDialog() {
+        pendingRecurringAction = null
     }
 
     fun markAllAsCompleted() {

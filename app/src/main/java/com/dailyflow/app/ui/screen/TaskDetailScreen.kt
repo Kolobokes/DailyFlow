@@ -4,11 +4,18 @@ import android.content.Intent
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,17 +26,26 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.dailyflow.app.data.model.Priority
+import com.dailyflow.app.data.model.RecurrenceFrequency
+import com.dailyflow.app.data.model.RecurrenceRule
+import com.dailyflow.app.data.model.RecurrenceScope
 import com.dailyflow.app.ui.components.SpinnerTimePicker
+import com.dailyflow.app.ui.viewmodel.RecurrenceScopeDialogState
 import com.dailyflow.app.ui.viewmodel.TaskDetailViewModel
+import com.dailyflow.app.util.RecurrenceUtils
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
 import java.time.temporal.ChronoUnit
+import java.time.temporal.TemporalAdjusters
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,6 +57,7 @@ fun TaskDetailScreen(
     val coroutineScope = rememberCoroutineScope()
     val showPermissionDialog by viewModel.showExactAlarmPermissionDialog.collectAsState()
     val context = LocalContext.current
+    val contentScrollState = rememberScrollState()
 
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf<String?>("") }
@@ -51,11 +68,24 @@ fun TaskDetailScreen(
     var categoryMenuExpanded by remember { mutableStateOf(false) }
     var reminderEnabled by remember { mutableStateOf(false) }
     var reminderMinutes by remember { mutableStateOf("60") }
+    var isRecurring by remember { mutableStateOf(false) }
+    var frequency by remember { mutableStateOf(RecurrenceFrequency.DAILY) }
+    var interval by remember { mutableStateOf("1") }
+    var repeatEndType by remember { mutableStateOf(RepeatEndType.NEVER) }
+    var repeatEndDate by remember { mutableStateOf<LocalDate?>(null) }
+    var repeatOccurrenceCount by remember { mutableStateOf("") }
+    var weeklyDays by remember { mutableStateOf(setOf<java.time.DayOfWeek>()) }
+    var monthlyDayOfMonth by remember { mutableStateOf<Int?>(null) }
+
+    var previewOccurrences by remember { mutableStateOf(0) }
 
     var showStartDatePicker by remember { mutableStateOf(false) }
     var showStartTimePicker by remember { mutableStateOf(false) }
     var showEndDatePicker by remember { mutableStateOf(false) }
     var showEndTimePicker by remember { mutableStateOf(false) }
+    var showRepeatEndDatePicker by remember { mutableStateOf(false) }
+    var showScopeDialog by remember { mutableStateOf(false) }
+    var scopeDialogState by remember { mutableStateOf<RecurrenceScopeDialogState?>(null) }
 
     val startDatePickerState = rememberDatePickerState()
     val endDatePickerState = rememberDatePickerState(
@@ -66,6 +96,7 @@ fun TaskDetailScreen(
             }
         }
     )
+    val repeatEndDatePickerState = rememberDatePickerState()
 
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
@@ -73,12 +104,34 @@ fun TaskDetailScreen(
     )
 
     LaunchedEffect(Unit) {
-        viewModel.navigateBack.collectLatest {
-            navController.popBackStack()
+        launch {
+            viewModel.navigateBack.collectLatest {
+                navController.popBackStack()
+            }
+        }
+        launch {
+            viewModel.recurrenceScopeDialog.collectLatest { state ->
+                scopeDialogState = state
+                showScopeDialog = true
+            }
         }
     }
 
     LaunchedEffect(uiState) {
+        isRecurring = uiState.isRecurring
+        uiState.recurrenceRule?.let { rule ->
+            frequency = rule.frequency
+            interval = rule.interval.toString()
+            repeatEndDate = rule.endDate
+            repeatOccurrenceCount = rule.occurrenceCount?.toString() ?: ""
+            weeklyDays = rule.daysOfWeek
+            monthlyDayOfMonth = rule.dayOfMonth
+            repeatEndType = when {
+                rule.endDate != null -> RepeatEndType.END_DATE
+                rule.occurrenceCount != null -> RepeatEndType.COUNT
+                else -> RepeatEndType.NEVER
+            }
+        }
         if (uiState.isNewTask) {
             val defaultDate = uiState.defaultDate ?: LocalDate.now()
             val defaultStartTime = uiState.defaultStartTime ?: LocalTime.now().plusHours(1).truncatedTo(ChronoUnit.HOURS)
@@ -98,6 +151,28 @@ fun TaskDetailScreen(
             reminderEnabled = task.reminderEnabled
             reminderMinutes = task.reminderMinutes?.toString() ?: "60"
         }
+        if (frequency in listOf(RecurrenceFrequency.WEEKLY, RecurrenceFrequency.WEEKLY_DAYS) && weeklyDays.isEmpty()) {
+            weeklyDays = setOf((startDateTime ?: LocalDateTime.now()).dayOfWeek)
+        }
+        if (frequency == RecurrenceFrequency.MONTHLY && monthlyDayOfMonth == null) {
+            monthlyDayOfMonth = (startDateTime ?: LocalDateTime.now()).dayOfMonth
+        }
+    }
+
+    LaunchedEffect(startDateTime, frequency, interval, weeklyDays, monthlyDayOfMonth, repeatEndType, repeatEndDate, repeatOccurrenceCount, isRecurring) {
+        val rule = buildRecurrenceRule(
+            isRecurring = isRecurring,
+            frequency = frequency,
+            interval = interval.toIntOrNull() ?: 1,
+            weeklyDays = weeklyDays,
+            monthlyDayOfMonth = monthlyDayOfMonth,
+            repeatEndType = repeatEndType,
+            repeatEndDate = repeatEndDate,
+            repeatOccurrenceCount = repeatOccurrenceCount.toIntOrNull()
+        )
+        previewOccurrences = if (isRecurring && rule != null) {
+            startDateTime?.let { RecurrenceUtils.estimateOccurrences(it, rule) } ?: 0
+        } else 0
     }
 
     if (showPermissionDialog) {
@@ -145,6 +220,8 @@ fun TaskDetailScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(it)
+                    .verticalScroll(contentScrollState)
+                    .imePadding()
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
@@ -220,6 +297,65 @@ fun TaskDetailScreen(
                     }
                 }
 
+                Divider()
+
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Повторять")
+                        Switch(
+                            checked = isRecurring,
+                            onCheckedChange = { checked ->
+                                isRecurring = checked
+                            }
+                        )
+                    }
+
+                    if (isRecurring) {
+                        RecurrenceConfig(
+                            frequency = frequency,
+                            onFrequencyChange = { newFrequency ->
+                                frequency = newFrequency
+                                if (newFrequency in listOf(RecurrenceFrequency.WEEKLY, RecurrenceFrequency.WEEKLY_DAYS) && weeklyDays.isEmpty()) {
+                                    weeklyDays = setOf((startDateTime ?: LocalDateTime.now()).dayOfWeek)
+                                }
+                                if (newFrequency == RecurrenceFrequency.MONTHLY && monthlyDayOfMonth == null) {
+                                    monthlyDayOfMonth = (startDateTime ?: LocalDateTime.now()).dayOfMonth
+                                }
+                                if (newFrequency !in listOf(RecurrenceFrequency.WEEKLY, RecurrenceFrequency.WEEKLY_DAYS)) {
+                                    weeklyDays = emptySet()
+                                }
+                            },
+                            interval = interval,
+                            onIntervalChange = { interval = it.filter { ch -> ch.isDigit() }.ifBlank { "1" } },
+                            weeklyDays = weeklyDays,
+                            onWeeklyDayToggle = { day ->
+                                weeklyDays = if (weeklyDays.contains(day)) weeklyDays - day else weeklyDays + day
+                            },
+                            monthlyDayOfMonth = monthlyDayOfMonth,
+                            onMonthlyDayChange = { monthlyDayOfMonth = it },
+                            repeatEndType = repeatEndType,
+                            onRepeatEndTypeChange = { repeatEndType = it },
+                            repeatEndDate = repeatEndDate,
+                            onRepeatEndDateClick = {
+                                repeatEndType = RepeatEndType.END_DATE
+                                showRepeatEndDatePicker = true
+                            },
+                            repeatOccurrenceCount = repeatOccurrenceCount,
+                            onRepeatOccurrenceCountChange = { repeatOccurrenceCount = it.filter { ch -> ch.isDigit() } },
+                            previewOccurrences = previewOccurrences
+                        )
+                    }
+                }
+
+                Divider()
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -237,7 +373,7 @@ fun TaskDetailScreen(
                         }
                     })
                 }
-                
+
                 Button(onClick = {
                     coroutineScope.launch {
                         var finalEndDateTime = endDateTime
@@ -248,12 +384,23 @@ fun TaskDetailScreen(
                         viewModel.saveTask(
                             title = title,
                             description = description,
-                            categoryId = selectedCategory?.id ?: "",
+                            categoryId = selectedCategory?.id,
                             startDateTime = startDateTime,
                             endDateTime = finalEndDateTime,
                             reminderEnabled = reminderEnabled,
                             reminderMinutes = reminderMinutes.toIntOrNull(),
-                            priority = priority
+                            priority = priority,
+                            isRecurring = isRecurring,
+                            recurrenceRule = buildRecurrenceRule(
+                                isRecurring = isRecurring,
+                                frequency = frequency,
+                                interval = interval.toIntOrNull() ?: 1,
+                                weeklyDays = weeklyDays,
+                                monthlyDayOfMonth = monthlyDayOfMonth,
+                                repeatEndType = repeatEndType,
+                                repeatEndDate = repeatEndDate,
+                                repeatOccurrenceCount = repeatOccurrenceCount.toIntOrNull()
+                            )
                         )
                     }
                 }, modifier = Modifier.fillMaxWidth()) {
@@ -310,6 +457,80 @@ fun TaskDetailScreen(
         )
     }
 
+
+    if (showRepeatEndDatePicker) {
+        DatePickerDialog(
+            onDismissRequest = { showRepeatEndDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    showRepeatEndDatePicker = false
+                    repeatEndDatePickerState.selectedDateMillis?.let {
+                        repeatEndDate = Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate()
+                    }
+                }) {
+                    Text("OK")
+                }
+            },
+            dismissButton = { TextButton(onClick = { showRepeatEndDatePicker = false }) { Text("Отмена") } }
+        ) {
+            DatePicker(state = repeatEndDatePickerState)
+        }
+    }
+
+    if (showScopeDialog) {
+        val allowSeriesScope = scopeDialogState?.allowSeriesScope == true
+        AlertDialog(
+            onDismissRequest = {
+                showScopeDialog = false
+                viewModel.dismissRecurrenceScopeDialog()
+            },
+            title = { Text("Как применить изменения?") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = {
+                        showScopeDialog = false
+                        viewModel.onRecurrenceScopeSelected(RecurrenceScope.THIS)
+                    }) {
+                        Text("Только эту задачу")
+                    }
+                    TextButton(
+                        onClick = {
+                            showScopeDialog = false
+                            viewModel.onRecurrenceScopeSelected(RecurrenceScope.THIS_AND_FUTURE)
+                        },
+                        enabled = allowSeriesScope
+                    ) {
+                        Text("Эту и будущие задачи")
+                    }
+                    TextButton(
+                        onClick = {
+                            showScopeDialog = false
+                            viewModel.onRecurrenceScopeSelected(RecurrenceScope.ENTIRE_SERIES)
+                        },
+                        enabled = allowSeriesScope
+                    ) {
+                        Text("Всю серию")
+                    }
+                    if (!allowSeriesScope) {
+                        Text(
+                            text = "Для применения к будущим задачам включите повторение и настройте правило.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        )
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = {
+                    showScopeDialog = false
+                    viewModel.dismissRecurrenceScopeDialog()
+                }) {
+                    Text("Отмена")
+                }
+            }
+        )
+    }
 
     if (showEndDatePicker) {
         DatePickerDialog(
@@ -372,3 +593,265 @@ fun PriorityIcon(priority: Priority, onClick: () -> Unit) {
         Icon(Icons.Default.LocalFireDepartment, contentDescription = "Приоритет", tint = color)
     }
 }
+
+private enum class RepeatEndType {
+    NEVER, END_DATE, COUNT
+}
+
+private fun buildRecurrenceRule(
+    isRecurring: Boolean,
+    frequency: RecurrenceFrequency,
+    interval: Int,
+    weeklyDays: Set<DayOfWeek>,
+    monthlyDayOfMonth: Int?,
+    repeatEndType: RepeatEndType,
+    repeatEndDate: LocalDate?,
+    repeatOccurrenceCount: Int?
+): RecurrenceRule? {
+    if (!isRecurring) return null
+    val endDate = when (repeatEndType) {
+        RepeatEndType.END_DATE -> repeatEndDate
+        else -> null
+    }
+    val occurrences = when (repeatEndType) {
+        RepeatEndType.COUNT -> repeatOccurrenceCount?.takeIf { it > 0 }
+        else -> null
+    }
+    return RecurrenceRule(
+        frequency = frequency,
+        interval = interval.coerceAtLeast(1),
+        daysOfWeek = weeklyDays,
+        dayOfMonth = monthlyDayOfMonth,
+        endDate = endDate,
+        occurrenceCount = occurrences
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RecurrenceConfig(
+    frequency: RecurrenceFrequency,
+    onFrequencyChange: (RecurrenceFrequency) -> Unit,
+    interval: String,
+    onIntervalChange: (String) -> Unit,
+    weeklyDays: Set<DayOfWeek>,
+    onWeeklyDayToggle: (DayOfWeek) -> Unit,
+    monthlyDayOfMonth: Int?,
+    onMonthlyDayChange: (Int?) -> Unit,
+    repeatEndType: RepeatEndType,
+    onRepeatEndTypeChange: (RepeatEndType) -> Unit,
+    repeatEndDate: LocalDate?,
+    onRepeatEndDateClick: () -> Unit,
+    repeatOccurrenceCount: String,
+    onRepeatOccurrenceCountChange: (String) -> Unit,
+    previewOccurrences: Int
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("Параметры повторения", style = MaterialTheme.typography.titleMedium)
+        FrequencySelector(frequency = frequency, onFrequencyChange = onFrequencyChange)
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OutlinedTextField(
+                value = interval,
+                onValueChange = onIntervalChange,
+                label = { Text("Интервал") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.width(120.dp)
+            )
+            Text("раз(а)")
+        }
+
+        when (frequency) {
+            RecurrenceFrequency.WEEKLY, RecurrenceFrequency.WEEKLY_DAYS -> WeeklyDaySelector(
+                selectedDays = weeklyDays,
+                onToggle = onWeeklyDayToggle
+            )
+            RecurrenceFrequency.MONTHLY -> MonthlyDaySelector(
+                dayOfMonth = monthlyDayOfMonth,
+                onDayChange = onMonthlyDayChange
+            )
+            else -> Unit
+        }
+
+        RepeatEndSection(
+            repeatEndType = repeatEndType,
+            onRepeatEndTypeChange = onRepeatEndTypeChange,
+            repeatEndDate = repeatEndDate,
+            onRepeatEndDateClick = onRepeatEndDateClick,
+            repeatOccurrenceCount = repeatOccurrenceCount,
+            onRepeatOccurrenceCountChange = onRepeatOccurrenceCountChange
+        )
+
+        Text(
+            text = "Будет создано $previewOccurrences задач",
+            style = MaterialTheme.typography.bodyMedium
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FrequencySelector(
+    frequency: RecurrenceFrequency,
+    onFrequencyChange: (RecurrenceFrequency) -> Unit
+) {
+    val options = listOf(
+        RecurrenceFrequency.DAILY to "Ежедневно",
+        RecurrenceFrequency.WEEKLY to "Еженедельно",
+        RecurrenceFrequency.WEEKLY_DAYS to "По дням недели",
+        RecurrenceFrequency.MONTHLY to "Ежемесячно"
+    )
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = !expanded }
+    ) {
+        OutlinedTextField(
+            value = options.first { it.first == frequency }.second,
+            onValueChange = {},
+            readOnly = true,
+            modifier = Modifier.menuAnchor(),
+            label = { Text("Частота") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) }
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            options.forEach { (value, label) ->
+                DropdownMenuItem(
+                    text = { Text(label) },
+                    onClick = {
+                        onFrequencyChange(value)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
+
+}
+
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
+@Composable
+private fun WeeklyDaySelector(
+    selectedDays: Set<DayOfWeek>,
+    onToggle: (DayOfWeek) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Дни недели")
+        val ordered = listOf(
+            DayOfWeek.MONDAY,
+            DayOfWeek.TUESDAY,
+            DayOfWeek.WEDNESDAY,
+            DayOfWeek.THURSDAY,
+            DayOfWeek.FRIDAY,
+            DayOfWeek.SATURDAY,
+            DayOfWeek.SUNDAY
+        )
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            ordered.forEach { day ->
+                val label = day.getDisplayName(TextStyle.SHORT, Locale.getDefault())
+                FilterChip(
+                    selected = selectedDays.contains(day),
+                    onClick = { onToggle(day) },
+                    label = { Text(label) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
+                        selectedLabelColor = MaterialTheme.colorScheme.primary
+                    )
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MonthlyDaySelector(
+    dayOfMonth: Int?,
+    onDayChange: (Int?) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("День месяца")
+        OutlinedTextField(
+            value = dayOfMonth?.toString() ?: "",
+            onValueChange = { value ->
+                val filtered = value.filter { it.isDigit() }
+                val number = filtered.takeIf { it.isNotBlank() }?.toInt()
+                onDayChange(number?.coerceIn(1, 31))
+            },
+            label = { Text("Число") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.width(120.dp)
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RepeatEndSection(
+    repeatEndType: RepeatEndType,
+    onRepeatEndTypeChange: (RepeatEndType) -> Unit,
+    repeatEndDate: LocalDate?,
+    onRepeatEndDateClick: () -> Unit,
+    repeatOccurrenceCount: String,
+    onRepeatOccurrenceCountChange: (String) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Повторение заканчивается", style = MaterialTheme.typography.bodyMedium)
+        RepeatEndRadio(
+            label = "Никогда",
+            selected = repeatEndType == RepeatEndType.NEVER,
+            onClick = { onRepeatEndTypeChange(RepeatEndType.NEVER) }
+        )
+        RepeatEndRadio(
+            label = "После даты",
+            selected = repeatEndType == RepeatEndType.END_DATE,
+            onClick = { onRepeatEndTypeChange(RepeatEndType.END_DATE) }
+        )
+        if (repeatEndType == RepeatEndType.END_DATE) {
+            TextButton(onClick = onRepeatEndDateClick) {
+                Icon(Icons.Default.CalendarToday, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(repeatEndDate?.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")) ?: "Выбрать дату")
+            }
+        }
+        RepeatEndRadio(
+            label = "После количества повторов",
+            selected = repeatEndType == RepeatEndType.COUNT,
+            onClick = { onRepeatEndTypeChange(RepeatEndType.COUNT) }
+        )
+        if (repeatEndType == RepeatEndType.COUNT) {
+            OutlinedTextField(
+                value = repeatOccurrenceCount,
+                onValueChange = onRepeatOccurrenceCountChange,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                label = { Text("Количество повторов") },
+                modifier = Modifier.width(180.dp)
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RepeatEndRadio(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+    ) {
+        RadioButton(selected = selected, onClick = onClick)
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(label)
+    }
+}
+

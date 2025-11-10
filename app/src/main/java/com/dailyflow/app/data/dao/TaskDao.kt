@@ -30,6 +30,15 @@ interface TaskDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTask(task: Task)
     
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTasks(tasks: List<Task>)
+
+    @Query("SELECT * FROM tasks WHERE seriesId = :seriesId ORDER BY sequenceNumber")
+    suspend fun getTasksBySeries(seriesId: String): List<Task>
+
+    @Query("DELETE FROM tasks WHERE id IN (:ids)")
+    suspend fun deleteTasksByIds(ids: List<String>)
+    
     @Update
     suspend fun updateTask(task: Task)
     

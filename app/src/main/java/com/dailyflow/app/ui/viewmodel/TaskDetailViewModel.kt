@@ -1,21 +1,19 @@
 package com.dailyflow.app.ui.viewmodel
 
-import android.app.AlarmManager
-import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
-import android.os.Build
-import android.provider.Settings
-import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dailyflow.app.data.model.Category
 import com.dailyflow.app.data.model.Priority
 import com.dailyflow.app.data.model.Task
+import com.dailyflow.app.data.model.RecurrenceRule
+import com.dailyflow.app.data.model.RecurrenceFrequency
+import com.dailyflow.app.data.model.RecurrenceScope
 import com.dailyflow.app.data.repository.CategoryRepository
 import com.dailyflow.app.data.repository.TaskRepository
-import com.dailyflow.app.receiver.ReminderReceiver
+import com.dailyflow.app.data.repository.RecurringUpdateRequest
+import com.dailyflow.app.notifications.ReminderScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -29,7 +27,6 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
-import java.time.ZoneId
 import java.util.UUID
 import javax.inject.Inject
 
@@ -41,7 +38,10 @@ data class TaskDetailUiState(
     val isLoading: Boolean = true,
     val defaultDate: LocalDate? = null,
     val defaultStartTime: LocalTime? = null,
-    val defaultEndTime: LocalTime? = null
+    val defaultEndTime: LocalTime? = null,
+    val isRecurring: Boolean = false,
+    val recurrenceRule: RecurrenceRule? = null,
+    val createdOccurrences: Int = 0
 )
 
 @HiltViewModel
@@ -49,6 +49,7 @@ class TaskDetailViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val taskRepository: TaskRepository,
     private val categoryRepository: CategoryRepository,
+    private val reminderScheduler: ReminderScheduler,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -66,12 +67,25 @@ class TaskDetailViewModel @Inject constructor(
     private val _navigateBack = MutableSharedFlow<Unit>()
     val navigateBack: SharedFlow<Unit> = _navigateBack.asSharedFlow()
 
+    private val _recurrenceScopeDialog = MutableSharedFlow<RecurrenceScopeDialogState>()
+    val recurrenceScopeDialog: SharedFlow<RecurrenceScopeDialogState> = _recurrenceScopeDialog.asSharedFlow()
+
+    private var pendingRecurringUpdate: RecurringUpdateRequest? = null
+
     init {
         viewModelScope.launch {
             val categories = categoryRepository.getTaskCategories().first()
             if (taskId != null) {
                 val task = taskRepository.getTaskById(taskId)
-                _uiState.value = TaskDetailUiState(task = task, categories = categories, isNewTask = false, isLoading = false)
+                val template = task?.seriesId?.let { taskRepository.getRecurringTemplate(it) }
+                _uiState.value = TaskDetailUiState(
+                    task = task,
+                    categories = categories,
+                    isNewTask = false,
+                    isLoading = false,
+                    isRecurring = task?.seriesId != null,
+                    recurrenceRule = template?.recurrenceRule
+                )
             } else {
                 val defaultDate = selectedDate?.let { LocalDate.parse(it) }
                 val defaultStartTime = startTime?.let { LocalTime.parse(it) }
@@ -89,16 +103,45 @@ class TaskDetailViewModel @Inject constructor(
     }
 
     fun saveTask(
-        title: String, 
-        description: String?, 
-        categoryId: String, 
-        startDateTime: LocalDateTime?, 
-        endDateTime: LocalDateTime?, 
-        reminderEnabled: Boolean, 
-        reminderMinutes: Int?, 
-        priority: Priority
+        title: String,
+        description: String?,
+        categoryId: String?,
+        startDateTime: LocalDateTime?,
+        endDateTime: LocalDateTime?,
+        reminderEnabled: Boolean,
+        reminderMinutes: Int?,
+        priority: Priority,
+        isRecurring: Boolean,
+        recurrenceRule: RecurrenceRule?,
+        scope: RecurrenceScope? = null
     ) {
         viewModelScope.launch {
+            val needsExactAlarmPermission = reminderEnabled &&
+                    startDateTime != null &&
+                    reminderMinutes != null &&
+                    !reminderScheduler.canScheduleExactAlarms()
+
+            if (needsExactAlarmPermission) {
+                _showExactAlarmPermissionDialog.value = true
+                return@launch
+            }
+
+            if (taskId == null && isRecurring && recurrenceRule != null && startDateTime != null && endDateTime != null) {
+                taskRepository.createRecurringSeries(
+                    title = title,
+                    description = description,
+                    categoryId = categoryId,
+                    startDateTime = startDateTime,
+                    endDateTime = endDateTime,
+                    reminderEnabled = reminderEnabled,
+                    reminderMinutes = reminderMinutes,
+                    priority = priority,
+                    recurrenceRule = recurrenceRule
+                )
+                _navigateBack.emit(Unit)
+                return@launch
+            }
+
             val taskToSave = if (taskId == null) {
                 Task(
                     id = UUID.randomUUID().toString(),
@@ -123,51 +166,62 @@ class TaskDetailViewModel @Inject constructor(
                     priority = priority
                 )
             }
+
             if (taskId == null) {
                 taskRepository.insertTask(taskToSave)
+                _navigateBack.emit(Unit)
             } else {
-                taskRepository.updateTask(taskToSave)
-            }
-
-            if (reminderEnabled && startDateTime != null && reminderMinutes != null) {
-                if (scheduleNotification(taskToSave.id, title, description ?: "", startDateTime.minusMinutes(reminderMinutes.toLong()))) {
-                    _navigateBack.emit(Unit)
+                val existingTask = _uiState.value.task
+                if (existingTask?.seriesId != null) {
+                    val request = RecurringUpdateRequest(
+                        title = title,
+                        description = description,
+                        categoryId = categoryId,
+                        startDateTime = startDateTime,
+                        endDateTime = endDateTime,
+                        reminderEnabled = reminderEnabled,
+                        reminderMinutes = reminderMinutes,
+                        priority = priority,
+                        recurrenceRule = if (isRecurring) recurrenceRule else null
+                    )
+                    if (scope == null) {
+                        pendingRecurringUpdate = request
+                        val allowSeriesScope = existingTask.seriesId != null
+                        _recurrenceScopeDialog.emit(
+                            RecurrenceScopeDialogState(
+                                allowSeriesScope = allowSeriesScope
+                            )
+                        )
+                        return@launch
+                    }
+                    taskRepository.updateRecurringTask(taskId, request, scope)
+                } else {
+                    taskRepository.updateTask(taskToSave)
                 }
-            } else {
-                cancelNotification(taskToSave.id)
                 _navigateBack.emit(Unit)
             }
         }
     }
 
-    private fun scheduleNotification(taskId: String, title: String, message: String, reminderDateTime: LocalDateTime): Boolean {
-        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (!alarmManager.canScheduleExactAlarms()) {
-                _showExactAlarmPermissionDialog.value = true
-                return false
-            }
+    fun onRecurrenceScopeSelected(scope: RecurrenceScope) {
+        val request = pendingRecurringUpdate ?: return
+        val currentTaskId = taskId ?: return
+        pendingRecurringUpdate = null
+        viewModelScope.launch {
+            taskRepository.updateRecurringTask(currentTaskId, request, scope)
+            _navigateBack.emit(Unit)
         }
-
-        val intent = Intent(context, ReminderReceiver::class.java).apply {
-            putExtra("title", title)
-            putExtra("message", message)
-        }
-        val pendingIntent = PendingIntent.getBroadcast(context, taskId.hashCode(), intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE)
-        val reminderTime = reminderDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
-        alarmManager.setExact(AlarmManager.RTC_WAKEUP, reminderTime, pendingIntent)
-        return true
     }
 
-    private fun cancelNotification(taskId: String) {
-        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val intent = Intent(context, ReminderReceiver::class.java)
-        val pendingIntent = PendingIntent.getBroadcast(context, taskId.hashCode(), intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE)
-        alarmManager.cancel(pendingIntent)
+    fun dismissRecurrenceScopeDialog() {
+        pendingRecurringUpdate = null
     }
 
     fun dismissExactAlarmPermissionDialog() {
         _showExactAlarmPermissionDialog.value = false
     }
 }
+
+data class RecurrenceScopeDialogState(
+    val allowSeriesScope: Boolean
+)

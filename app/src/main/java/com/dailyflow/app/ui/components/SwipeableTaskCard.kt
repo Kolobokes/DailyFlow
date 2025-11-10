@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.dailyflow.app.data.model.Category
 import com.dailyflow.app.data.model.Task
+import com.dailyflow.app.data.model.TaskStatus
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -31,7 +32,8 @@ fun SwipeableTaskCard(
     onClick: () -> Unit,
     onToggle: (Boolean) -> Unit,
     onDelete: () -> Unit,
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val dismissState = rememberDismissState(
         confirmStateChange = { dismissValue ->
@@ -75,13 +77,20 @@ fun SwipeableTaskCard(
             }
         },
         dismissContent = {
+            val statusColorOverride = when (task.status) {
+                TaskStatus.COMPLETED -> Color(0xFF4CAF50).copy(alpha = 0.12f)
+                TaskStatus.CANCELLED -> Color(0xFFE53935).copy(alpha = 0.12f)
+                TaskStatus.PENDING -> null
+            }
             TaskCard(
                 task = task,
                 category = category,
                 onClick = onClick,
                 onToggle = onToggle,
                 onDelete = onDelete,
-                onCancel = onCancel
+                onCancel = onCancel,
+                modifier = modifier,
+                containerColorOverride = statusColorOverride
             )
         }
     )

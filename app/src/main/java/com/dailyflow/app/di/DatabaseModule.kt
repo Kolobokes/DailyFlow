@@ -33,6 +33,9 @@ object DatabaseModule {
     fun provideCategoryDao(database: DailyFlowDatabase): CategoryDao = database.categoryDao()
     
     @Provides
+    fun provideRecurringTemplateDao(database: DailyFlowDatabase): RecurringTemplateDao = database.recurringTemplateDao()
+    
+    @Provides
     fun providePassphrase(@ApplicationContext context: Context): String {
         // In a real app, this should be generated securely and stored in Android Keystore
         // For now, we'll use a simple approach

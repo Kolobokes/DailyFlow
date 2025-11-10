@@ -42,9 +42,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.dailyflow.app.ui.components.TaskCard
+import com.dailyflow.app.data.model.RecurrenceScope
+import com.dailyflow.app.data.model.TaskStatus
+import com.dailyflow.app.ui.components.SwipeableTaskCard
 import com.dailyflow.app.ui.navigation.Screen
 import com.dailyflow.app.ui.viewmodel.HomeViewModel
+import com.dailyflow.app.ui.viewmodel.RecurringActionDialogState
+import com.dailyflow.app.ui.viewmodel.RecurringActionType
 import com.himanshoe.kalendar.Kalendar
 import com.himanshoe.kalendar.KalendarEvent
 import com.himanshoe.kalendar.KalendarEvents
@@ -59,14 +63,8 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-import androidx.compose.material.DismissDirection
-import androidx.compose.material.DismissValue
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.SwipeToDismiss
-import androidx.compose.material.rememberDismissState
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.automirrored.filled.Undo
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlin.math.max
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -80,9 +78,18 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltView
     val dailyProgress by viewModel.dailyProgress.collectAsState()
 
     var showCalendar by remember { mutableStateOf(false) }
+    var showRecurringActionDialog by remember { mutableStateOf(false) }
+    var recurringDialogState by remember { mutableStateOf<RecurringActionDialogState?>(null) }
 
     val selectedLocalDate = selectedDate.toLocalDate()
     val selectedKotlinDate = selectedLocalDate.toKotlinLocalDate()
+
+    LaunchedEffect(Unit) {
+        viewModel.recurringActionDialog.collectLatest { state ->
+            recurringDialogState = state
+            showRecurringActionDialog = true
+        }
+    }
 
     Scaffold(
         floatingActionButton = {
@@ -183,11 +190,10 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltView
                 }
             }
             
-            if (tasks.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(text = "Нет задач на этот день")
-                }
-            } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+            ) {
                 VerticalTimeline(
                     tasks = tasks,
                     categories = categories,
@@ -213,12 +219,66 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltView
                         )
                     }
                 )
+
+                if (tasks.isEmpty()) {
+                    Text(
+                        text = "Нет задач на этот день",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
             }
         }
     }
+
+    if (showRecurringActionDialog && recurringDialogState != null) {
+        val state = recurringDialogState!!
+        val isDelete = state.actionType == RecurringActionType.DELETE
+        AlertDialog(
+            onDismissRequest = {
+                showRecurringActionDialog = false
+                viewModel.dismissRecurringActionDialog()
+            },
+            title = {
+                Text(if (isDelete) "Удаление повторяющейся задачи" else "Отмена повторяющейся задачи")
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Выберите, к каким задачам применить действие")
+                    TextButton(onClick = {
+                        showRecurringActionDialog = false
+                        viewModel.onRecurringActionScopeSelected(RecurrenceScope.THIS)
+                    }) {
+                        Text("Только к этой задаче")
+                    }
+                    TextButton(onClick = {
+                        showRecurringActionDialog = false
+                        viewModel.onRecurringActionScopeSelected(RecurrenceScope.THIS_AND_FUTURE)
+                    }) {
+                        Text("К этой и будущим задачам")
+                    }
+                    TextButton(onClick = {
+                        showRecurringActionDialog = false
+                        viewModel.onRecurringActionScopeSelected(RecurrenceScope.ENTIRE_SERIES)
+                    }) {
+                        Text("Ко всей серии")
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = {
+                    showRecurringActionDialog = false
+                    viewModel.dismissRecurringActionDialog()
+                }) {
+                    Text("Отмена")
+                }
+            }
+        )
+    }
 }
 
-@OptIn(ExperimentalMaterialApi::class)
 @Composable
 private fun VerticalTimeline(
     tasks: List<com.dailyflow.app.data.model.Task>,
@@ -371,87 +431,29 @@ private fun VerticalTimeline(
                     val category = categories.find { it.id == item.task.categoryId }
                     val width = maxWidth / item.parallelCount
                     val xOffset = width * item.slotIndex
-                    SwipeableTimelineTask(
+                    val statusBackground = when (item.task.status) {
+                        TaskStatus.COMPLETED -> Color(0xFF4CAF50).copy(alpha = 0.15f)
+                        TaskStatus.CANCELLED -> Color(0xFFE53935).copy(alpha = 0.15f)
+                        TaskStatus.PENDING -> item.color.copy(alpha = 0.6f)
+                    }
+                    SwipeableTaskCard(
+                        task = item.task,
+                        category = category,
+                        onClick = { onTaskClick(item.task) },
+                        onToggle = { isCompleted -> onToggle(item.task, isCompleted) },
+                        onDelete = { onDelete(item.task) },
+                        onCancel = { onCancel(item.task) },
                         modifier = Modifier
                             .width(width)
                             .offset(x = xOffset, y = topOffset)
                             .height(height)
                             .padding(horizontal = 6.dp, vertical = 2.dp),
-                        task = item.task,
-                        category = category,
-                        backgroundColor = item.color,
-                        onTaskClick = { onTaskClick(item.task) },
-                        onToggle = { isCompleted -> onToggle(item.task, isCompleted) },
-                        onDelete = { onDelete(item.task) },
-                        onCancel = { onCancel(item.task) }
+                        containerColorOverride = statusBackground
                     )
                 }
             }
         }
     }
-}
-
-@OptIn(ExperimentalMaterialApi::class)
-@Composable
-private fun SwipeableTimelineTask(
-    modifier: Modifier,
-    task: com.dailyflow.app.data.model.Task,
-    category: com.dailyflow.app.data.model.Category?,
-    backgroundColor: Color,
-    onTaskClick: () -> Unit,
-    onToggle: (Boolean) -> Unit,
-    onDelete: () -> Unit,
-    onCancel: () -> Unit,
-) {
-    val dismissState = rememberDismissState()
-
-    LaunchedEffect(dismissState.currentValue) {
-        if (dismissState.currentValue != DismissValue.Default) {
-            val completing = task.status != com.dailyflow.app.data.model.TaskStatus.COMPLETED
-            onToggle(completing)
-            dismissState.animateTo(DismissValue.Default)
-        }
-    }
-
-    SwipeToDismiss(
-        modifier = modifier,
-        state = dismissState,
-        directions = setOf(DismissDirection.StartToEnd, DismissDirection.EndToStart),
-        background = {
-            val direction = dismissState.dismissDirection ?: return@SwipeToDismiss
-            val completing = task.status != com.dailyflow.app.data.model.TaskStatus.COMPLETED
-            val bgColor = if (completing) MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
-            else MaterialTheme.colorScheme.secondary.copy(alpha = 0.35f)
-            val alignment = if (direction == DismissDirection.StartToEnd) Alignment.CenterStart else Alignment.CenterEnd
-            val icon = if (completing) Icons.Default.Check else Icons.AutoMirrored.Filled.Undo
-            val text = if (completing) "Выполнить" else "Вернуть"
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(bgColor)
-                    .padding(horizontal = 20.dp),
-                contentAlignment = alignment
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(icon, contentDescription = text, tint = MaterialTheme.colorScheme.onPrimary)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = text, color = MaterialTheme.colorScheme.onPrimary)
-                }
-            }
-        },
-        dismissContent = {
-            TaskCard(
-                task = task,
-                category = category,
-                onClick = onTaskClick,
-                onToggle = onToggle,
-                onDelete = onDelete,
-                onCancel = onCancel,
-                modifier = Modifier.fillMaxSize(),
-                containerColorOverride = backgroundColor
-            )
-        }
-    )
 }
 
 @Composable

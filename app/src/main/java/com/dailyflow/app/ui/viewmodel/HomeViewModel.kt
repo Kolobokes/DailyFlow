@@ -8,6 +8,7 @@ import com.dailyflow.app.data.model.Note
 import com.dailyflow.app.data.model.Category
 import com.dailyflow.app.data.model.Priority
 import com.dailyflow.app.data.model.TaskStatus
+import com.dailyflow.app.data.model.RecurrenceScope
 import com.dailyflow.app.data.repository.TaskRepository
 import com.dailyflow.app.data.repository.NoteRepository
 import com.dailyflow.app.data.repository.CategoryRepository
@@ -81,6 +82,11 @@ class HomeViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = 0f
         )
+
+    private val _recurringActionDialog = MutableSharedFlow<RecurringActionDialogState>()
+    val recurringActionDialog: SharedFlow<RecurringActionDialogState> = _recurringActionDialog.asSharedFlow()
+
+    private var pendingRecurringAction: PendingRecurringAction? = null
     
     fun addTask(title: String, description: String?, categoryId: String, startDateTime: LocalDateTime?, endDateTime: LocalDateTime?, reminderEnabled: Boolean, reminderMinutes: Int?, priority: Priority) {
         viewModelScope.launch {
@@ -130,14 +136,42 @@ class HomeViewModel @Inject constructor(
 
     fun deleteTask(taskId: String) {
         viewModelScope.launch {
-            val task = taskRepository.getTaskById(taskId)
-            task?.let { taskRepository.deleteTask(it) }
+            val task = taskRepository.getTaskById(taskId) ?: return@launch
+            if (task.seriesId.isNullOrBlank()) {
+                taskRepository.deleteTask(task)
+            } else {
+                pendingRecurringAction = PendingRecurringAction(task, RecurringActionType.DELETE)
+                _recurringActionDialog.emit(RecurringActionDialogState(task, RecurringActionType.DELETE))
+            }
         }
     }
 
     fun cancelTask(taskId: String) {
         viewModelScope.launch {
-            taskRepository.updateTaskStatus(taskId, TaskStatus.CANCELLED)
+            val task = taskRepository.getTaskById(taskId) ?: return@launch
+            if (task.seriesId.isNullOrBlank()) {
+                taskRepository.updateTaskStatus(taskId, TaskStatus.CANCELLED)
+            } else {
+                pendingRecurringAction = PendingRecurringAction(task, RecurringActionType.CANCEL)
+                _recurringActionDialog.emit(RecurringActionDialogState(task, RecurringActionType.CANCEL))
+            }
         }
+    }
+
+    fun onRecurringActionScopeSelected(scope: RecurrenceScope) {
+        val pending = pendingRecurringAction ?: return
+        viewModelScope.launch {
+            when (pending.actionType) {
+                RecurringActionType.DELETE ->
+                    taskRepository.deleteRecurringTask(pending.task.id, scope)
+                RecurringActionType.CANCEL ->
+                    taskRepository.cancelRecurringTask(pending.task.id, scope)
+            }
+            pendingRecurringAction = null
+        }
+    }
+
+    fun dismissRecurringActionDialog() {
+        pendingRecurringAction = null
     }
 }

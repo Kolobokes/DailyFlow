@@ -16,9 +16,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.dailyflow.app.data.model.RecurrenceScope
 import com.dailyflow.app.ui.components.SwipeableTaskCard
 import com.dailyflow.app.ui.navigation.Screen
 import com.dailyflow.app.ui.viewmodel.TasksViewModel
+import com.dailyflow.app.ui.viewmodel.RecurringActionDialogState
+import com.dailyflow.app.ui.viewmodel.RecurringActionType
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
@@ -39,9 +43,18 @@ fun TasksScreen(
     val showCompleted by viewModel.showCompleted.collectAsState()
     
     var showDatePicker by remember { mutableStateOf(false) }
+    var showRecurringDialog by remember { mutableStateOf(false) }
+    var recurringDialogState by remember { mutableStateOf<RecurringActionDialogState?>(null) }
     val datePickerState = rememberDatePickerState()
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        viewModel.recurringActionDialog.collectLatest { state ->
+            recurringDialogState = state
+            showRecurringDialog = true
+        }
+    }
 
     LaunchedEffect(groupedTasks) {
         val today = LocalDate.now()
@@ -139,5 +152,49 @@ fun TasksScreen(
                 }
             }
         }
+    }
+
+    if (showRecurringDialog && recurringDialogState != null) {
+        val state = recurringDialogState!!
+        val isDelete = state.actionType == RecurringActionType.DELETE
+        AlertDialog(
+            onDismissRequest = {
+                showRecurringDialog = false
+                viewModel.dismissRecurringActionDialog()
+            },
+            title = { Text(if (isDelete) "Действие с повторяющейся задачей" else "Отмена повторяющейся задачи") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Выберите, к каким задачам применить действие")
+                    TextButton(onClick = {
+                        showRecurringDialog = false
+                        viewModel.onRecurringActionScopeSelected(RecurrenceScope.THIS)
+                    }) {
+                        Text("Только к этой задаче")
+                    }
+                    TextButton(onClick = {
+                        showRecurringDialog = false
+                        viewModel.onRecurringActionScopeSelected(RecurrenceScope.THIS_AND_FUTURE)
+                    }) {
+                        Text("К этой и будущим задачам")
+                    }
+                    TextButton(onClick = {
+                        showRecurringDialog = false
+                        viewModel.onRecurringActionScopeSelected(RecurrenceScope.ENTIRE_SERIES)
+                    }) {
+                        Text("Ко всей серии")
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = {
+                    showRecurringDialog = false
+                    viewModel.dismissRecurringActionDialog()
+                }) {
+                    Text("Отмена")
+                }
+            }
+        )
     }
 }
