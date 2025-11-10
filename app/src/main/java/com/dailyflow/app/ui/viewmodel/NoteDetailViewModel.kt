@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dailyflow.app.data.model.Category
 import com.dailyflow.app.data.model.Note
+import com.dailyflow.app.data.model.ChecklistItem
 import com.dailyflow.app.data.repository.CategoryRepository
 import com.dailyflow.app.data.repository.NoteRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -21,7 +22,9 @@ data class NoteDetailUiState(
     val note: Note? = null,
     val categories: List<Category> = emptyList(),
     val isNewNote: Boolean = true,
-    val isLoading: Boolean = true
+    val isLoading: Boolean = true,
+    val isChecklist: Boolean = false,
+    val checklistItems: List<ChecklistItem> = emptyList()
 )
 
 @HiltViewModel
@@ -41,7 +44,14 @@ class NoteDetailViewModel @Inject constructor(
             val categories = categoryRepository.getNoteCategories().first()
             if (noteId != null) {
                 val note = noteRepository.getNoteById(noteId)
-                _uiState.value = NoteDetailUiState(note = note, categories = categories, isNewNote = false, isLoading = false)
+                _uiState.value = NoteDetailUiState(
+                    note = note,
+                    categories = categories,
+                    isNewNote = false,
+                    isLoading = false,
+                    isChecklist = note?.isChecklist ?: false,
+                    checklistItems = note?.checklistItems ?: emptyList()
+                )
             } else {
                 _uiState.value = NoteDetailUiState(categories = categories, isNewNote = true, isLoading = false)
             }
@@ -53,7 +63,9 @@ class NoteDetailViewModel @Inject constructor(
         content: String,
         categoryId: String?,
         dateTime: LocalDateTime?,
-        isCompleted: Boolean
+        isCompleted: Boolean,
+        isChecklist: Boolean,
+        checklistItems: List<ChecklistItem>
     ) {
         viewModelScope.launch {
             val noteToSave = if (noteId == null) {
@@ -63,7 +75,9 @@ class NoteDetailViewModel @Inject constructor(
                     content = content,
                     categoryId = categoryId,
                     dateTime = dateTime,
-                    isCompleted = isCompleted
+                    isCompleted = isCompleted,
+                    isChecklist = isChecklist,
+                    checklistItems = checklistItems
                 )
             } else {
                 _uiState.value.note!!.copy(
@@ -71,7 +85,9 @@ class NoteDetailViewModel @Inject constructor(
                     content = content,
                     categoryId = categoryId,
                     dateTime = dateTime,
-                    isCompleted = isCompleted
+                    isCompleted = isCompleted,
+                    isChecklist = isChecklist,
+                    checklistItems = checklistItems
                 )
             }
             if (noteId == null) {

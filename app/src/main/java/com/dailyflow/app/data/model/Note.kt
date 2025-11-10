@@ -15,6 +15,7 @@ data class Note(
     val priority: Priority = Priority.MEDIUM,
     val isCompleted: Boolean = false,
     val isChecklist: Boolean = false,
+    val checklistItems: List<ChecklistItem>? = null,
     val createdAt: LocalDateTime = LocalDateTime.now(),
     val updatedAt: LocalDateTime = LocalDateTime.now()
 )

@@ -114,14 +114,23 @@ fun NoteListItem(note: Note, category: Category?, navController: NavController) 
             Spacer(modifier = Modifier.height(8.dp))
             
             if (note.isChecklist) {
-                note.content.lines().filter { it.isNotBlank() }.forEach {
-                    val parts = it.split(",")
-                    val checked = parts.getOrNull(0)?.toBoolean() ?: false
-                    val text = parts.getOrNull(1) ?: ""
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(if (checked) Icons.Default.Done else Icons.Default.Circle, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = text, textDecoration = if(checked) TextDecoration.LineThrough else textDecoration)
+                val items = note.checklistItems
+                if (items.isNullOrEmpty()) {
+                    Text(text = note.content, style = MaterialTheme.typography.bodyMedium, maxLines = 5, textDecoration = textDecoration)
+                } else {
+                    items.take(5).forEach { item ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(if (item.isChecked) Icons.Default.Done else Icons.Default.Circle, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = item.text,
+                                style = MaterialTheme.typography.bodyMedium,
+                                textDecoration = if (item.isChecked) TextDecoration.LineThrough else textDecoration
+                            )
+                        }
+                    }
+                    if (items.size > 5) {
+                        Text("…", style = MaterialTheme.typography.bodySmall)
                     }
                 }
             } else {

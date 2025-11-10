@@ -1,10 +1,13 @@
 package com.dailyflow.app.data.database
 
 import androidx.room.TypeConverter
+import com.dailyflow.app.data.model.ChecklistItem
 import com.dailyflow.app.data.model.Priority
 import com.dailyflow.app.data.model.RecurrenceFrequency
 import com.dailyflow.app.data.model.RecurrenceRule
 import com.dailyflow.app.data.model.TaskStatus
+import org.json.JSONArray
+import org.json.JSONObject
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -88,5 +91,36 @@ class Converters {
             endDate = endDate,
             occurrenceCount = occurrenceCount
         )
+    }
+
+    @TypeConverter
+    fun fromChecklistItems(items: List<ChecklistItem>?): String? {
+        if (items.isNullOrEmpty()) return null
+        val array = JSONArray()
+        items.forEach { item ->
+            val obj = JSONObject().apply {
+                put("id", item.id)
+                put("text", item.text)
+                put("checked", item.isChecked)
+            }
+            array.put(obj)
+        }
+        return array.toString()
+    }
+
+    @TypeConverter
+    fun toChecklistItems(value: String?): List<ChecklistItem>? {
+        if (value.isNullOrBlank()) return null
+        val array = JSONArray(value)
+        val result = mutableListOf<ChecklistItem>()
+        for (i in 0 until array.length()) {
+            val obj = array.optJSONObject(i) ?: continue
+            result += ChecklistItem(
+                id = obj.optString("id"),
+                text = obj.optString("text"),
+                isChecked = obj.optBoolean("checked")
+            )
+        }
+        return result
     }
 }

@@ -14,7 +14,7 @@ import net.sqlcipher.database.SupportFactory
 
 @Database(
     entities = [Task::class, Note::class, Category::class, RecurringTemplate::class],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -60,6 +60,16 @@ abstract class DailyFlowDatabase : RoomDatabase() {
                 database.execSQL("ALTER TABLE tasks ADD COLUMN sequenceNumber INTEGER")
             }
         }
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                if (!hasColumn(database, "notes", "isChecklist")) {
+                    database.execSQL("ALTER TABLE notes ADD COLUMN isChecklist INTEGER NOT NULL DEFAULT 0")
+                }
+                if (!hasColumn(database, "notes", "checklistItems")) {
+                    database.execSQL("ALTER TABLE notes ADD COLUMN checklistItems TEXT")
+                }
+            }
+        }
 
         fun getDatabase(context: Context, passphrase: String): DailyFlowDatabase {
             return INSTANCE ?: synchronized(this) {
@@ -72,6 +82,7 @@ abstract class DailyFlowDatabase : RoomDatabase() {
                 )
                 .addMigrations(MIGRATION_4_5)
                 .addMigrations(MIGRATION_5_6)
+                .addMigrations(MIGRATION_6_7)
                 .openHelperFactory(factory)
                 .fallbackToDestructiveMigration()
                 .build()
@@ -79,6 +90,19 @@ abstract class DailyFlowDatabase : RoomDatabase() {
                 INSTANCE = instance
                 instance
             }
+        }
+
+        private fun hasColumn(database: SupportSQLiteDatabase, table: String, column: String): Boolean {
+            val cursor = database.query("PRAGMA table_info(`$table`)")
+            cursor.use {
+                val nameIndex = cursor.getColumnIndex("name")
+                while (cursor.moveToNext()) {
+                    if (nameIndex >= 0 && column.equals(cursor.getString(nameIndex), ignoreCase = true)) {
+                        return true
+                    }
+                }
+            }
+            return false
         }
     }
 }
