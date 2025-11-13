@@ -2,13 +2,14 @@
     <string name="app_name">Paw Planner</string>
     
     <!-- Navigation -->
-    <string name="nav_home">Главная</string>
+    <string name="nav_home">День</string>
     <string name="nav_tasks">Задачи</string>
     <string name="nav_notes">Заметки</string>
     <string name="nav_statistics">Статистика</string>
     <string name="nav_settings">Настройки</string>
     
     <!-- Common -->
+    <string name="ok">ОК</string>
     <string name="add">Добавить</string>
     <string name="save">Сохранить</string>
     <string name="cancel">Отмена</string>
@@ -38,6 +39,9 @@
     <!-- Notes -->
     <string name="note_title">Заголовок заметки</string>
     <string name="note_content">Содержимое</string>
+    <string name="new_note">Новая заметка</string>
+    <string name="edit_note">Редактировать заметку</string>
+    <string name="select_date">Выбрать дату</string>
     
     <!-- Categories -->
     <string name="category_name">Название категории</string>
@@ -70,4 +74,10 @@
     <string name="settings_notifications">Уведомления</string>
     <string name="settings_backup">Резервное копирование</string>
     <string name="settings_privacy">Конфиденциальность</string>
+
+    <!-- Filters -->
+    <string name="filter_all">Все</string>
+    <string name="filter_overdue">Просроченные</string>
+    <string name="filter_completed">Выполненные</string>
+    <string name="filter_cancelled">Отмененные</string>
 </resources>

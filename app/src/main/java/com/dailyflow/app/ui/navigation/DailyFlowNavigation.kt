@@ -7,6 +7,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -15,12 +16,13 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.dailyflow.app.R
 import com.dailyflow.app.ui.screen.*
 
 data class BottomNavItem(
     val title: String,
     val icon: ImageVector,
-    val screen: Screen
+    val route: String
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -31,11 +33,11 @@ fun DailyFlowNavigation() {
     val currentDestination = navBackStackEntry?.destination
 
     val bottomNavItems = listOf(
-        BottomNavItem("Главная", Icons.Default.Home, Screen.Home),
-        BottomNavItem("Задачи", Icons.Default.Assignment, Screen.Tasks),
-        BottomNavItem("Заметки", Icons.Default.Note, Screen.Notes),
-        BottomNavItem("Аналитика", Icons.Default.BarChart, Screen.Analytics),
-        BottomNavItem("Настройки", Icons.Default.Settings, Screen.Settings)
+        BottomNavItem(stringResource(R.string.nav_home), Icons.Default.Home, Screen.Home.route),
+        BottomNavItem(stringResource(R.string.nav_tasks), Icons.Default.Assignment, Screen.Tasks.route),
+        BottomNavItem(stringResource(R.string.nav_notes), Icons.Default.Note, Screen.Notes.route),
+        BottomNavItem(stringResource(R.string.nav_statistics), Icons.Default.BarChart, Screen.Analytics.route),
+        BottomNavItem(stringResource(R.string.nav_settings), Icons.Default.Settings, Screen.Settings.route)
     )
 
     Scaffold(
@@ -45,11 +47,13 @@ fun DailyFlowNavigation() {
                     NavigationBarItem(
                         icon = { Icon(item.icon, contentDescription = item.title) },
                         label = { Text(item.title) },
-                        selected = currentDestination?.hierarchy?.any { it.route == item.screen.route } == true,
+                        selected = currentDestination?.hierarchy?.any { destination ->
+                            destination.route?.substringBefore("?") == item.route
+                        } == true,
                         onClick = {
-                            val targetRoute = when (item.screen) {
-                                Screen.Notes -> Screen.Notes.createRoute(null)
-                                else -> item.screen.route
+                            val targetRoute = when (item.route) {
+                                Screen.Notes.route -> Screen.Notes.createRoute()
+                                else -> item.route
                             }
                             navController.navigate(targetRoute) {
                                 popUpTo(navController.graph.findStartDestination().id) {
@@ -75,7 +79,10 @@ fun DailyFlowNavigation() {
             composable(Screen.Tasks.route) {
                 TasksScreen(navController = navController)
             }
-            composable(Screen.Notes.route) {
+            composable(
+                route = Screen.Notes.route,
+                arguments = listOf(navArgument("date") { type = NavType.StringType; nullable = true; defaultValue = "" })
+            ) {
                 NotesScreen(navController = navController)
             }
             composable(Screen.CategoryManagement.route) {

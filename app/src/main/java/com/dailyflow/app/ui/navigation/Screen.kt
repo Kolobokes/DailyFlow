@@ -8,10 +8,9 @@ sealed class Screen(val route: String) {
     object Login : Screen("login")
     object Home : Screen("home")
     object Tasks : Screen("tasks")
-    object Notes : Screen("notes?date={date}") {
-        val routeWithArgs = "notes?date={date}"
+    object Notes : Screen("notes") {
         fun createRoute(date: String? = null): String {
-            return date?.let { "notes?date=$it" } ?: "notes?date="
+            return date?.let { "notes?date=$it" } ?: "notes"
         }
     }
     object Analytics : Screen("analytics")

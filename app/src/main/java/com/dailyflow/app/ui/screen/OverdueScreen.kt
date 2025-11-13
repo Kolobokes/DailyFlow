@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.dailyflow.app.R
 import com.dailyflow.app.data.model.RecurrenceScope
 import com.dailyflow.app.data.model.Task
 import com.dailyflow.app.ui.navigation.Screen
@@ -29,6 +30,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import androidx.compose.ui.res.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -90,7 +92,7 @@ fun OverdueScreen(
                             }
                             showDatePicker = false
                         }) {
-                            Text("OK")
+                            Text(stringResource(R.string.ok))
                         }
                     },
                     dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("Отмена") } }

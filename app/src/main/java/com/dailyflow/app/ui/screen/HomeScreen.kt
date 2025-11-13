@@ -219,15 +219,6 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltView
                         )
                     }
                 )
-
-                if (tasks.isEmpty()) {
-                    Text(
-                        text = "Нет задач на этот день",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
             }
         }
     }

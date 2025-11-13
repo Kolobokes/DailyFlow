@@ -28,17 +28,13 @@ class TasksViewModel @Inject constructor(
     private val categoryRepository: CategoryRepository
 ) : ViewModel() {
 
+    enum class StatusFilter { ALL, OVERDUE, COMPLETED, CANCELLED }
+
     private val _filterDate = MutableStateFlow<LocalDate?>(null)
     val filterDate: StateFlow<LocalDate?> = _filterDate.asStateFlow()
 
-    private val _showCancelled = MutableStateFlow(false)
-    val showCancelled: StateFlow<Boolean> = _showCancelled.asStateFlow()
-
-    private val _showOverdue = MutableStateFlow(true)
-    val showOverdue: StateFlow<Boolean> = _showOverdue.asStateFlow()
-
-    private val _showCompleted = MutableStateFlow(true)
-    val showCompleted: StateFlow<Boolean> = _showCompleted.asStateFlow()
+    private val _statusFilter = MutableStateFlow(StatusFilter.ALL)
+    val statusFilter: StateFlow<StatusFilter> = _statusFilter.asStateFlow()
 
     private val allTasks: StateFlow<List<Task>> = taskRepository.getAllTasksSortedByDate()
         .stateIn(
@@ -48,18 +44,22 @@ class TasksViewModel @Inject constructor(
         )
 
     val groupedTasks: StateFlow<Map<LocalDate, List<Task>>> = combine(
-        allTasks, filterDate, showCancelled, showOverdue, showCompleted
-    ) { tasks, date, showC, showO, showComp ->
-        val filteredTasks = tasks.filter { task ->
-            val status = task.status
-            val isOverdue = task.endDateTime?.isBefore(java.time.LocalDateTime.now()) == true && status == TaskStatus.PENDING
-
-            (if (date != null) task.startDateTime?.toLocalDate() == date else true) &&
-            (showC || status != TaskStatus.CANCELLED) &&
-            (showO || !isOverdue) &&
-            (showComp || status != TaskStatus.COMPLETED)
+        allTasks, filterDate, statusFilter
+    ) { tasks, date, statusFilter ->
+        val now = java.time.LocalDateTime.now()
+        val filteredByStatus = when (statusFilter) {
+            StatusFilter.ALL -> tasks
+            StatusFilter.OVERDUE -> tasks.filter { it.endDateTime?.isBefore(now) == true && it.status == TaskStatus.PENDING }
+            StatusFilter.COMPLETED -> tasks.filter { it.status == TaskStatus.COMPLETED }
+            StatusFilter.CANCELLED -> tasks.filter { it.status == TaskStatus.CANCELLED }
         }
-        filteredTasks.filter { it.startDateTime != null }.groupBy { it.startDateTime!!.toLocalDate() }.toSortedMap(compareByDescending { it })
+        val filteredTasks = filteredByStatus.filter { task ->
+            val matchesDate = date?.let { task.startDateTime?.toLocalDate() == it } ?: true
+            matchesDate
+        }
+        filteredTasks.filter { it.startDateTime != null }
+            .groupBy { it.startDateTime!!.toLocalDate() }
+            .toSortedMap(compareByDescending { it })
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
@@ -77,16 +77,8 @@ class TasksViewModel @Inject constructor(
         _filterDate.value = date
     }
 
-    fun toggleShowCancelled(show: Boolean) {
-        _showCancelled.value = show
-    }
-
-    fun toggleShowOverdue(show: Boolean) {
-        _showOverdue.value = show
-    }
-
-    fun toggleShowCompleted(show: Boolean) {
-        _showCompleted.value = show
+    fun setStatusFilter(filter: StatusFilter) {
+        _statusFilter.value = filter
     }
 
     private val _recurringActionDialog = MutableSharedFlow<RecurringActionDialogState>()

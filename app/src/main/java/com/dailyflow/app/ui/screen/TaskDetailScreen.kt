@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -46,6 +47,8 @@ import java.time.format.TextStyle
 import java.time.temporal.ChronoUnit
 import java.time.temporal.TemporalAdjusters
 import java.util.Locale
+import androidx.compose.ui.res.stringResource
+import com.dailyflow.app.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -418,7 +421,7 @@ fun TaskDetailScreen(
                     showStartDatePicker = false
                     showStartTimePicker = true
                 }) {
-                    Text("OK")
+                    Text(stringResource(R.string.ok))
                 }
             },
             dismissButton = { TextButton(onClick = { showStartDatePicker = false }) { Text("Отмена") } }
@@ -450,7 +453,7 @@ fun TaskDetailScreen(
                         endDateTime = newStartDateTime.plusHours(1)
                     }
                 }) {
-                    Text("OK")
+                    Text(stringResource(R.string.ok))
                 }
             },
             dismissButton = { TextButton(onClick = { showStartTimePicker = false }) { Text("Отмена") } }
@@ -468,7 +471,7 @@ fun TaskDetailScreen(
                         repeatEndDate = Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate()
                     }
                 }) {
-                    Text("OK")
+                    Text(stringResource(R.string.ok))
                 }
             },
             dismissButton = { TextButton(onClick = { showRepeatEndDatePicker = false }) { Text("Отмена") } }
@@ -540,7 +543,7 @@ fun TaskDetailScreen(
                     showEndDatePicker = false
                     showEndTimePicker = true
                 }) {
-                    Text("OK")
+                    Text(stringResource(R.string.ok))
                 }
             },
             dismissButton = { TextButton(onClick = { showEndDatePicker = false }) { Text("Отмена") } }
@@ -574,7 +577,7 @@ fun TaskDetailScreen(
                     
                     endDateTime = potentialEndDateTime
                 }) {
-                    Text("OK")
+                    Text(stringResource(R.string.ok))
                 }
             },
             dismissButton = { TextButton(onClick = { showEndTimePicker = false }) { Text("Отмена") } }

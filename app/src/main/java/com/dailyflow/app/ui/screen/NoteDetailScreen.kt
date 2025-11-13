@@ -15,10 +15,12 @@ import androidx.compose.material3.LocalTextStyle
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.dailyflow.app.R
 import com.dailyflow.app.data.model.Category
 import com.dailyflow.app.data.model.ChecklistItem
 import com.dailyflow.app.ui.viewmodel.NoteDetailViewModel
@@ -74,10 +76,10 @@ fun NoteDetailScreen(
                     }
                     showDatePicker = false
                 }) {
-                    Text("OK")
+                    Text(stringResource(R.string.ok))
                 }
             },
-            dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("Отмена") } }
+            dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text(stringResource(R.string.cancel)) } }
         ) {
             DatePicker(state = datePickerState)
         }
@@ -86,7 +88,7 @@ fun NoteDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (uiState.isNewNote) "Новая заметка" else "Редактировать заметку") },
+                title = { Text(if (uiState.isNewNote) stringResource(R.string.new_note) else stringResource(R.string.edit_note)) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
@@ -198,7 +200,7 @@ fun NoteDetailScreen(
             Button(onClick = { showDatePicker = true }) {
                 Icon(Icons.Default.CalendarToday, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(text = dateTime?.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")) ?: "Выбрать дату")
+                Text(text = dateTime?.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")) ?: stringResource(R.string.select_date))
             }
 
             Button(

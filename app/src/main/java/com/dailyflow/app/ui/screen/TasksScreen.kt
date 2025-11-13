@@ -12,10 +12,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.dailyflow.app.R
 import com.dailyflow.app.data.model.RecurrenceScope
 import com.dailyflow.app.ui.components.SwipeableTaskCard
 import com.dailyflow.app.ui.navigation.Screen
@@ -38,9 +40,7 @@ fun TasksScreen(
     val groupedTasks by viewModel.groupedTasks.collectAsState()
     val categories by viewModel.categories.collectAsState()
     val filterDate by viewModel.filterDate.collectAsState()
-    val showCancelled by viewModel.showCancelled.collectAsState()
-    val showOverdue by viewModel.showOverdue.collectAsState()
-    val showCompleted by viewModel.showCompleted.collectAsState()
+    val statusFilter by viewModel.statusFilter.collectAsState()
     
     var showDatePicker by remember { mutableStateOf(false) }
     var showRecurringDialog by remember { mutableStateOf(false) }
@@ -102,7 +102,7 @@ fun TasksScreen(
                             }
                             showDatePicker = false
                         }) {
-                            Text("OK")
+                            Text(stringResource(R.string.ok))
                         }
                     },
                     dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("Отмена") } }
@@ -112,9 +112,10 @@ fun TasksScreen(
             }
             
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround, verticalAlignment = Alignment.CenterVertically) {
-                FilterChip(selected = showOverdue, onClick = { viewModel.toggleShowOverdue(!showOverdue) }, label = { Text("Просроченные") })
-                FilterChip(selected = showCompleted, onClick = { viewModel.toggleShowCompleted(!showCompleted) }, label = { Text("Выполненные") })
-                FilterChip(selected = showCancelled, onClick = { viewModel.toggleShowCancelled(!showCancelled) }, label = { Text("Отмененные") })
+                FilterChip(selected = statusFilter == TasksViewModel.StatusFilter.ALL, onClick = { viewModel.setStatusFilter(TasksViewModel.StatusFilter.ALL) }, label = { Text(stringResource(R.string.filter_all)) })
+                FilterChip(selected = statusFilter == TasksViewModel.StatusFilter.OVERDUE, onClick = { viewModel.setStatusFilter(TasksViewModel.StatusFilter.OVERDUE) }, label = { Text(stringResource(R.string.filter_overdue)) })
+                FilterChip(selected = statusFilter == TasksViewModel.StatusFilter.COMPLETED, onClick = { viewModel.setStatusFilter(TasksViewModel.StatusFilter.COMPLETED) }, label = { Text(stringResource(R.string.filter_completed)) })
+                FilterChip(selected = statusFilter == TasksViewModel.StatusFilter.CANCELLED, onClick = { viewModel.setStatusFilter(TasksViewModel.StatusFilter.CANCELLED) }, label = { Text(stringResource(R.string.filter_cancelled)) })
             }
 
             Spacer(modifier = Modifier.height(8.dp))
