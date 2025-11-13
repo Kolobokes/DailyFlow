@@ -6,6 +6,36 @@
     <string name="nav_tasks">Задачи</string>
     <string name="nav_notes">Заметки</string>
     <string name="nav_statistics">Отчёты</string>
+    <!-- Analytics -->
+    <string name="analytics_title">Отчёты</string>
+    <string name="analytics_period_label">Период</string>
+    <string name="analytics_period_week">7 дней</string>
+    <string name="analytics_period_month">30 дней</string>
+    <string name="analytics_period_quarter">90 дней</string>
+    <string name="analytics_period_year">365 дней</string>
+    <string name="analytics_period_custom">Выбрать период</string>
+    <string name="analytics_start_date">Начало</string>
+    <string name="analytics_end_date">Конец</string>
+    <string name="analytics_selected_period">Выбранный период: %1$s — %2$s</string>
+    <string name="analytics_category_report_title">Распределение задач по категориям</string>
+    <string name="analytics_total_tasks">Всего задач: %d</string>
+    <string name="analytics_overdue_report_title">Просроченные задачи</string>
+    <string name="analytics_overdue_total">Всего просроченных: %d</string>
+    <string name="analytics_no_data">Нет данных за выбранный период</string>
+    <string name="analytics_view_all_overdue">Все просроченные</string>
+    <string name="analytics_overdue_no_due">без срока</string>
+    <string name="analytics_completion_title">Выполнение задач</string>
+    <string name="analytics_completion_no_tasks">На выбранный период задач нет</string>
+    <string name="analytics_completion_for_period">Данные за %s</string>
+    <string name="analytics_completion_planned">Запланировано: %d</string>
+    <string name="analytics_completion_completed">Выполнено: %d</string>
+    <string name="analytics_completion_percentage">Завершено: %d%%</string>
+    <string name="analytics_workload_title">Нагрузка по времени</string>
+    <string name="analytics_workload_hint">Сколько задач запланировано на каждый час и день недели.</string>
+    <string name="analytics_workload_legend_low">Мало</string>
+    <string name="analytics_workload_legend_high">Много</string>
+    <string name="analytics_item_count">Кол-во: %d</string>
+    <string name="analytics_uncategorized">Без категории</string>
     <string name="nav_settings">Настройки</string>
     
     <!-- Common -->
@@ -17,6 +47,7 @@
     <string name="edit">Редактировать</string>
     <string name="done">Готово</string>
     <string name="search">Поиск</string>
+    <string name="back">Назад</string>
     
     <!-- Tasks -->
     <string name="task_title">Название задачи</string>
