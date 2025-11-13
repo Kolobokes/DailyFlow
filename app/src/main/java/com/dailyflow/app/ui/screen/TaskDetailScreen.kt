@@ -1,6 +1,7 @@
 package com.dailyflow.app.ui.screen
 
 import android.content.Intent
+import android.content.res.Configuration
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -21,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
@@ -45,7 +47,6 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.time.temporal.ChronoUnit
-import java.time.temporal.TemporalAdjusters
 import java.util.Locale
 import androidx.compose.ui.res.stringResource
 import com.dailyflow.app.R
@@ -60,6 +61,12 @@ fun TaskDetailScreen(
     val coroutineScope = rememberCoroutineScope()
     val showPermissionDialog by viewModel.showExactAlarmPermissionDialog.collectAsState()
     val context = LocalContext.current
+    val russianContext = remember(context) {
+        val config = Configuration(context.resources.configuration)
+        config.setLocale(Locale("ru"))
+        context.createConfigurationContext(config)
+    }
+    val russianConfiguration = remember(russianContext) { russianContext.resources.configuration }
     val contentScrollState = rememberScrollState()
 
     var title by remember { mutableStateOf("") }
@@ -417,16 +424,21 @@ fun TaskDetailScreen(
         DatePickerDialog(
             onDismissRequest = { showStartDatePicker = false },
             confirmButton = {
-                TextButton(onClick = { 
+                TextButton(onClick = {
                     showStartDatePicker = false
                     showStartTimePicker = true
                 }) {
                     Text(stringResource(R.string.ok))
                 }
             },
-            dismissButton = { TextButton(onClick = { showStartDatePicker = false }) { Text("Отмена") } }
+            dismissButton = { TextButton(onClick = { showStartDatePicker = false }) { Text(stringResource(R.string.cancel)) } }
         ) {
-            DatePicker(state = startDatePickerState)
+            CompositionLocalProvider(
+                LocalContext provides russianContext,
+                LocalConfiguration provides russianConfiguration
+            ) {
+                DatePicker(state = startDatePickerState)
+            }
         }
     }
 
@@ -474,9 +486,14 @@ fun TaskDetailScreen(
                     Text(stringResource(R.string.ok))
                 }
             },
-            dismissButton = { TextButton(onClick = { showRepeatEndDatePicker = false }) { Text("Отмена") } }
+            dismissButton = { TextButton(onClick = { showRepeatEndDatePicker = false }) { Text(stringResource(R.string.cancel)) } }
         ) {
-            DatePicker(state = repeatEndDatePickerState)
+            CompositionLocalProvider(
+                LocalContext provides russianContext,
+                LocalConfiguration provides russianConfiguration
+            ) {
+                DatePicker(state = repeatEndDatePickerState)
+            }
         }
     }
 
@@ -546,9 +563,14 @@ fun TaskDetailScreen(
                     Text(stringResource(R.string.ok))
                 }
             },
-            dismissButton = { TextButton(onClick = { showEndDatePicker = false }) { Text("Отмена") } }
+            dismissButton = { TextButton(onClick = { showEndDatePicker = false }) { Text(stringResource(R.string.cancel)) } }
         ) {
-            DatePicker(state = endDatePickerState)
+            CompositionLocalProvider(
+                LocalContext provides russianContext,
+                LocalConfiguration provides russianConfiguration
+            ) {
+                DatePicker(state = endDatePickerState)
+            }
         }
     }
 

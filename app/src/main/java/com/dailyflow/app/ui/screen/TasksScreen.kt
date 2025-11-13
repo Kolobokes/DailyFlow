@@ -6,12 +6,16 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -30,8 +34,10 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import android.content.res.Configuration
+import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
 fun TasksScreen(
     navController: NavController,
@@ -48,6 +54,13 @@ fun TasksScreen(
     val datePickerState = rememberDatePickerState()
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val russianContext = remember(context) {
+        val config = Configuration(context.resources.configuration)
+        config.setLocale(Locale("ru"))
+        context.createConfigurationContext(config)
+    }
+    val russianConfiguration = remember(russianContext) { russianContext.resources.configuration }
 
     LaunchedEffect(Unit) {
         viewModel.recurringActionDialog.collectLatest { state ->
@@ -105,13 +118,22 @@ fun TasksScreen(
                             Text(stringResource(R.string.ok))
                         }
                     },
-                    dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("Отмена") } }
+                    dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text(stringResource(R.string.cancel)) } }
                 ) {
-                    DatePicker(state = datePickerState)
+                    CompositionLocalProvider(
+                        LocalContext provides russianContext,
+                        LocalConfiguration provides russianConfiguration
+                    ) {
+                        DatePicker(state = datePickerState)
+                    }
                 }
             }
             
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround, verticalAlignment = Alignment.CenterVertically) {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 FilterChip(selected = statusFilter == TasksViewModel.StatusFilter.ALL, onClick = { viewModel.setStatusFilter(TasksViewModel.StatusFilter.ALL) }, label = { Text(stringResource(R.string.filter_all)) })
                 FilterChip(selected = statusFilter == TasksViewModel.StatusFilter.OVERDUE, onClick = { viewModel.setStatusFilter(TasksViewModel.StatusFilter.OVERDUE) }, label = { Text(stringResource(R.string.filter_overdue)) })
                 FilterChip(selected = statusFilter == TasksViewModel.StatusFilter.COMPLETED, onClick = { viewModel.setStatusFilter(TasksViewModel.StatusFilter.COMPLETED) }, label = { Text(stringResource(R.string.filter_completed)) })

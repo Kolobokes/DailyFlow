@@ -2,12 +2,21 @@ package com.dailyflow.app.ui.navigation
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.Assignment
+import androidx.compose.material.icons.automirrored.filled.Note
+import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -31,11 +40,13 @@ fun DailyFlowNavigation() {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
+    val textMeasurer = rememberTextMeasurer()
+    val density = LocalContext.current.resources.displayMetrics.density
 
     val bottomNavItems = listOf(
-        BottomNavItem(stringResource(R.string.nav_home), Icons.Default.Home, Screen.Home.route),
-        BottomNavItem(stringResource(R.string.nav_tasks), Icons.Default.Assignment, Screen.Tasks.route),
-        BottomNavItem(stringResource(R.string.nav_notes), Icons.Default.Note, Screen.Notes.route),
+        BottomNavItem(stringResource(R.string.nav_home), Icons.Default.AccessTime, Screen.Home.route),
+        BottomNavItem(stringResource(R.string.nav_tasks), Icons.AutoMirrored.Filled.Assignment, Screen.Tasks.route),
+        BottomNavItem(stringResource(R.string.nav_notes), Icons.AutoMirrored.Filled.Note, Screen.Notes.route),
         BottomNavItem(stringResource(R.string.nav_statistics), Icons.Default.BarChart, Screen.Analytics.route),
         BottomNavItem(stringResource(R.string.nav_settings), Icons.Default.Settings, Screen.Settings.route)
     )
@@ -43,10 +54,14 @@ fun DailyFlowNavigation() {
     Scaffold(
         bottomBar = {
             NavigationBar {
+                val showLabels = bottomNavItems.all { item ->
+                    val result = textMeasurer.measure(text = item.title, style = MaterialTheme.typography.labelMedium)
+                    (result.size.width / density) <= 64f
+                }
                 bottomNavItems.forEach { item ->
                     NavigationBarItem(
                         icon = { Icon(item.icon, contentDescription = item.title) },
-                        label = { Text(item.title) },
+                        label = { if (showLabels) Text(item.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                         selected = currentDestination?.hierarchy?.any { destination ->
                             destination.route?.substringBefore("?") == item.route
                         } == true,

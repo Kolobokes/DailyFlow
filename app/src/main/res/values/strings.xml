@@ -5,7 +5,7 @@
     <string name="nav_home">День</string>
     <string name="nav_tasks">Задачи</string>
     <string name="nav_notes">Заметки</string>
-    <string name="nav_statistics">Статистика</string>
+    <string name="nav_statistics">Отчёты</string>
     <string name="nav_settings">Настройки</string>
     
     <!-- Common -->

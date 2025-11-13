@@ -4,12 +4,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.runtime.*
@@ -28,6 +28,10 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.UUID
+import android.content.res.Configuration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,6 +48,13 @@ fun NoteDetailScreen(
     var categoryMenuExpanded by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
     val datePickerState = rememberDatePickerState()
+    val context = LocalContext.current
+    val russianContext = remember(context) {
+        val config = Configuration(context.resources.configuration)
+        config.setLocale(Locale("ru"))
+        context.createConfigurationContext(config)
+    }
+    val russianConfiguration = remember(russianContext) { russianContext.resources.configuration }
     var isChecklist by remember { mutableStateOf(false) }
     val checklistItems = remember { mutableStateListOf<ChecklistItem>() }
 
@@ -81,7 +92,12 @@ fun NoteDetailScreen(
             },
             dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text(stringResource(R.string.cancel)) } }
         ) {
-            DatePicker(state = datePickerState)
+            CompositionLocalProvider(
+                LocalContext provides russianContext,
+                LocalConfiguration provides russianConfiguration
+            ) {
+                DatePicker(state = datePickerState)
+            }
         }
     }
 

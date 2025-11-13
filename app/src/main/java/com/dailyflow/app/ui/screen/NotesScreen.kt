@@ -61,17 +61,24 @@ fun NotesScreen(navController: NavController) {
                     )
                 }
                 items(categories) { category ->
-                     FilterChip(
+                    val categoryColor = Color(android.graphics.Color.parseColor(category.color))
+                    FilterChip(
                         modifier = Modifier.height(32.dp),
                         selected = selectedCategoryId == category.id,
                         onClick = { viewModel.selectCategory(category.id) },
-                        label = { 
+                        label = {
                             Text(
                                 text = category.name,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
-                            ) 
-                        }
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = categoryColor.copy(alpha = 0.25f),
+                            selectedLabelColor = categoryColor,
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            labelColor = MaterialTheme.colorScheme.onSurface
+                        )
                     )
                 }
             }

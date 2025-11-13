@@ -62,6 +62,8 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
+import java.time.Month
 import java.util.Locale
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -135,10 +137,30 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltView
             }
 
             if (showCalendar) {
+                val dayNames = listOf("Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс")
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    dayNames.forEachIndexed { index, label ->
+                        val isWeekend = index >= 5
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Medium,
+                            color = if (isWeekend) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
                 Kalendar(
                     currentDay = selectedKotlinDate,
                     kalendarType = KalendarType.Firey,
-                    showLabel = true,
+                    showLabel = false,
                     events = KalendarEvents(
                         events = tasks.mapNotNull { task ->
                             task.startDateTime?.toLocalDate()?.let { startDate ->
@@ -155,7 +177,24 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltView
                         viewModel.updateSelectedDate(date.toJavaLocalDate().atStartOfDay())
                         showCalendar = false
                     },
-                    headerContent = { _, _ -> }
+                    headerContent = { monthName, year ->
+                        val locale = Locale("ru")
+                        val monthKey = when (monthName) {
+                            is Enum<*> -> monthName.name
+                            else -> monthName.toString()
+                        }
+                        val parsedMonth = runCatching {
+                            Month.valueOf(monthKey.uppercase(Locale.ROOT))
+                        }.getOrNull()
+                        val displayMonth = parsedMonth?.getDisplayName(TextStyle.FULL, locale)
+                            ?.replaceFirstChar { ch -> if (ch.isLowerCase()) ch.titlecase(locale) else ch.toString() }
+                            ?: monthKey
+                        Text(
+                            text = "$displayMonth $year",
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                    }
                 )
             }
             
