@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">DailyFlow</string>
+    <string name="app_name">Paw Planner</string>
     
     <!-- Navigation -->
     <string name="nav_home">Главная</string>
