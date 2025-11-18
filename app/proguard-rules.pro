@@ -19,6 +19,19 @@
 -keep class dagger.hilt.** { *; }
 -keep class javax.inject.** { *; }
 
+# Keep kotlinx-datetime classes
+-keep class kotlinx.datetime.** { *; }
+-keep class kotlinx.datetime.serializers.** { *; }
+
+# Suppress warnings for kotlinx-serialization (used internally by kotlinx-datetime)
+-dontwarn kotlinx.serialization.**
+-dontwarn kotlinx.serialization.internal.**
+-dontwarn kotlinx.serialization.descriptors.**
+-dontwarn kotlinx.serialization.encoding.**
+
+# Keep Compose runtime
+-keep class androidx.compose.runtime.** { *; }
+
 # Uncomment this to preserve the line number information for
 # debugging stack traces.
 -keepattributes SourceFile,LineNumberTable
