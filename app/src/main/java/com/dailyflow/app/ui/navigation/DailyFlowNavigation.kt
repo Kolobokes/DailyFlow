@@ -27,6 +27,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.dailyflow.app.R
 import com.dailyflow.app.ui.screen.*
+import kotlinx.coroutines.delay
 
 data class BottomNavItem(
     val title: String,
@@ -36,12 +37,45 @@ data class BottomNavItem(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DailyFlowNavigation() {
+fun DailyFlowNavigation(initialTaskId: String? = null, activity: androidx.activity.ComponentActivity? = null) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
     val textMeasurer = rememberTextMeasurer()
     val density = LocalContext.current.resources.displayMetrics.density
+    val context = LocalContext.current
+    
+    // Обрабатываем taskId из Intent для навигации из уведомления
+    LaunchedEffect(initialTaskId) {
+        initialTaskId?.let { taskId ->
+            // Небольшая задержка, чтобы убедиться, что навигация готова
+            delay(300)
+            navController.navigate(Screen.TaskDetail.createRoute(taskId = taskId)) {
+                popUpTo(navController.graph.findStartDestination().id) {
+                    saveState = true
+                }
+                launchSingleTop = true
+            }
+        }
+    }
+    
+    // Обрабатываем новые Intent (например, при клике на уведомление, когда приложение уже запущено)
+    var handledTaskId by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) {
+        val currentActivity = activity ?: (context as? androidx.activity.ComponentActivity)
+        currentActivity?.intent?.getStringExtra("taskId")?.let { taskId ->
+            if (taskId != handledTaskId && taskId != initialTaskId) {
+                handledTaskId = taskId
+                delay(300)
+                navController.navigate(Screen.TaskDetail.createRoute(taskId = taskId)) {
+                    popUpTo(navController.graph.findStartDestination().id) {
+                        saveState = true
+                    }
+                    launchSingleTop = true
+                }
+            }
+        }
+    }
 
     val bottomNavItems = listOf(
         BottomNavItem(stringResource(R.string.nav_home), Icons.Default.AccessTime, Screen.Home.route),

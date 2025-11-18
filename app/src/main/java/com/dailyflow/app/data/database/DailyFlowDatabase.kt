@@ -14,7 +14,7 @@ import net.sqlcipher.database.SupportFactory
 
 @Database(
     entities = [Task::class, Note::class, Category::class, RecurringTemplate::class],
-    version = 7,
+    version = 9,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -70,6 +70,20 @@ abstract class DailyFlowDatabase : RoomDatabase() {
                 }
             }
         }
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                if (!hasColumn(database, "notes", "attachedFileUri")) {
+                    database.execSQL("ALTER TABLE notes ADD COLUMN attachedFileUri TEXT")
+                }
+            }
+        }
+        private val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                if (!hasColumn(database, "tasks", "attachedFileUri")) {
+                    database.execSQL("ALTER TABLE tasks ADD COLUMN attachedFileUri TEXT")
+                }
+            }
+        }
 
         fun getDatabase(context: Context, passphrase: String): DailyFlowDatabase {
             return INSTANCE ?: synchronized(this) {
@@ -83,6 +97,8 @@ abstract class DailyFlowDatabase : RoomDatabase() {
                 .addMigrations(MIGRATION_4_5)
                 .addMigrations(MIGRATION_5_6)
                 .addMigrations(MIGRATION_6_7)
+                .addMigrations(MIGRATION_7_8)
+                .addMigrations(MIGRATION_8_9)
                 .openHelperFactory(factory)
                 .fallbackToDestructiveMigration()
                 .build()

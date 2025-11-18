@@ -8,6 +8,8 @@ import com.dailyflow.app.data.model.Note
 import com.dailyflow.app.data.model.ChecklistItem
 import com.dailyflow.app.data.repository.CategoryRepository
 import com.dailyflow.app.data.repository.NoteRepository
+import com.dailyflow.app.export.TextExportManager
+import com.dailyflow.app.util.FileStorageManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,6 +33,8 @@ data class NoteDetailUiState(
 class NoteDetailViewModel @Inject constructor(
     private val noteRepository: NoteRepository,
     private val categoryRepository: CategoryRepository,
+    private val exportManager: TextExportManager,
+    private val fileStorageManager: FileStorageManager,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -58,6 +62,10 @@ class NoteDetailViewModel @Inject constructor(
         }
     }
 
+    suspend fun copyFileToStorage(sourceUri: android.net.Uri, noteId: String): String? {
+        return fileStorageManager.copyFileToStorage(sourceUri, noteId)
+    }
+
     fun saveNote(
         title: String,
         content: String,
@@ -65,19 +73,30 @@ class NoteDetailViewModel @Inject constructor(
         dateTime: LocalDateTime?,
         isCompleted: Boolean,
         isChecklist: Boolean,
-        checklistItems: List<ChecklistItem>
+        checklistItems: List<ChecklistItem>,
+        attachedFileName: String? = null,
+        noteIdForNewNote: String? = null
     ) {
         viewModelScope.launch {
+            val finalNoteId = noteId ?: noteIdForNewNote ?: UUID.randomUUID().toString()
+            
+            // Если есть старый файл и он отличается от нового, удаляем старый
+            val oldNote = _uiState.value.note
+            if (oldNote != null && oldNote.attachedFileUri != null && oldNote.attachedFileUri != attachedFileName) {
+                fileStorageManager.deleteFile(oldNote.attachedFileUri!!)
+            }
+            
             val noteToSave = if (noteId == null) {
                 Note(
-                    id = UUID.randomUUID().toString(),
+                    id = finalNoteId,
                     title = title,
                     content = content,
                     categoryId = categoryId,
                     dateTime = dateTime,
                     isCompleted = isCompleted,
                     isChecklist = isChecklist,
-                    checklistItems = checklistItems
+                    checklistItems = checklistItems,
+                    attachedFileUri = attachedFileName
                 )
             } else {
                 _uiState.value.note!!.copy(
@@ -87,7 +106,8 @@ class NoteDetailViewModel @Inject constructor(
                     dateTime = dateTime,
                     isCompleted = isCompleted,
                     isChecklist = isChecklist,
-                    checklistItems = checklistItems
+                    checklistItems = checklistItems,
+                    attachedFileUri = attachedFileName
                 )
             }
             if (noteId == null) {
@@ -102,8 +122,25 @@ class NoteDetailViewModel @Inject constructor(
         viewModelScope.launch {
             if (noteId != null) {
                 val note = _uiState.value.note!!
+                // Удаляем прикрепленный файл, если он есть
+                note.attachedFileUri?.let { fileName ->
+                    fileStorageManager.deleteFile(fileName)
+                }
                 noteRepository.deleteNote(note)
             }
         }
+    }
+    
+    fun getFileUri(fileName: String): android.net.Uri? {
+        return fileStorageManager.getFileUri(fileName)
+    }
+    
+    fun getFile(fileName: String): java.io.File? {
+        return fileStorageManager.getFile(fileName)
+    }
+
+    suspend fun exportCurrentNote(): String? {
+        val id = noteId ?: return null
+        return exportManager.exportNote(id)
     }
 }

@@ -184,8 +184,18 @@ fun CategoryEditDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (category == null) "Новая категория" else "Редактировать категорию") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Название") })
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Название") },
+                    modifier = Modifier.fillMaxWidth()
+                )
                 
                 Text("Цвет:")
                 Box(
@@ -223,12 +233,20 @@ fun CategoryEditDialog(
                     }
                 }
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Checkbox(checked = forTasks, onCheckedChange = { forTasks = it })
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text("Для задач")
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Checkbox(checked = forNotes, onCheckedChange = { forNotes = it })
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text("Для заметок")
                 }
             }

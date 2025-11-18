@@ -17,6 +17,9 @@ import androidx.compose.material.rememberDismissState
 import androidx.compose.material3.*
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -169,28 +172,47 @@ fun SwipeableTaskCard(
     modifier: Modifier = Modifier,
     containerColorOverride: Color? = null
 ) {
+    var shouldResetDismiss by remember { mutableStateOf(false) }
+    
     val dismissState = rememberDismissState(
         confirmStateChange = { dismissValue ->
             when (dismissValue) {
                 DismissValue.DismissedToEnd -> {
-                    onToggle(true)
-                    true
+                    // Свайп вправо - выполнить задачу
+                    if (task.status != TaskStatus.COMPLETED && task.status != TaskStatus.CANCELLED) {
+                        onToggle(true)
+                        shouldResetDismiss = true
+                    }
+                    false // Не подтверждаем изменение, чтобы состояние сбросилось
                 }
                 DismissValue.DismissedToStart -> {
-                    onToggle(false)
-                    true
+                    // Свайп влево - вернуть в работу
+                    if (task.status == TaskStatus.COMPLETED) {
+                        onToggle(false)
+                        shouldResetDismiss = true
+                    }
+                    false // Не подтверждаем изменение, чтобы состояние сбросилось
                 }
                 else -> false
             }
         }
     )
+    
+    // Сбрасываем состояние после выполнения действия
+    LaunchedEffect(shouldResetDismiss) {
+        if (shouldResetDismiss) {
+            delay(400) // Небольшая задержка для видимости анимации
+            dismissState.reset()
+            shouldResetDismiss = false
+        }
+    }
 
     SwipeToDismiss(
         state = dismissState,
         directions = setOf(DismissDirection.StartToEnd, DismissDirection.EndToStart),
         background = {
             val direction = dismissState.dismissDirection ?: return@SwipeToDismiss
-            val completing = direction == DismissDirection.StartToEnd && task.status != TaskStatus.COMPLETED
+            val completing = direction == DismissDirection.StartToEnd && task.status != TaskStatus.COMPLETED && task.status != TaskStatus.CANCELLED
             val returning = direction == DismissDirection.EndToStart && task.status == TaskStatus.COMPLETED
             val bgColor = when {
                 completing -> MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
@@ -306,18 +328,8 @@ fun TaskCard(
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .background(statusColor.copy(alpha = 0.15f), shape = CircleShape)
-                            .padding(horizontal = 8.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = statusLabel,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = statusColor
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
+                    // Убрали текстовый статус - оставляем только визуальные индикаторы
+                    Spacer(modifier = Modifier.width(0.dp))
                     if (isOverdue) {
                         Icon(Icons.Default.Warning, "Просрочено", tint = OverdueColor, modifier = Modifier.size(12.dp))
                         Spacer(modifier = Modifier.width(4.dp))

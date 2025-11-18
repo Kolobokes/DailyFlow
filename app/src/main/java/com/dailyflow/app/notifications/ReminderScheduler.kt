@@ -54,7 +54,12 @@ class ReminderScheduler @Inject constructor(
             PendingIntent.FLAG_UPDATE_CURRENT or mutableFlag()
         )
 
-        alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+        // Используем setExactAndAllowWhileIdle для точных будильников, даже когда устройство в режиме энергосбережения
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+        } else {
+            alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+        }
     }
 
     fun cancel(taskId: String) {

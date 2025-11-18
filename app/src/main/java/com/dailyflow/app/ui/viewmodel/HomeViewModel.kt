@@ -12,9 +12,11 @@ import com.dailyflow.app.data.model.RecurrenceScope
 import com.dailyflow.app.data.repository.TaskRepository
 import com.dailyflow.app.data.repository.NoteRepository
 import com.dailyflow.app.data.repository.CategoryRepository
+import com.dailyflow.app.export.TextExportManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.UUID
 import javax.inject.Inject
@@ -23,7 +25,8 @@ import javax.inject.Inject
 class HomeViewModel @Inject constructor(
     private val taskRepository: TaskRepository,
     private val noteRepository: NoteRepository,
-    private val categoryRepository: CategoryRepository
+    private val categoryRepository: CategoryRepository,
+    private val exportManager: TextExportManager
 ) : ViewModel() {
     
     private val _selectedDate = MutableStateFlow(LocalDateTime.now())
@@ -88,7 +91,7 @@ class HomeViewModel @Inject constructor(
 
     private var pendingRecurringAction: PendingRecurringAction? = null
     
-    fun addTask(title: String, description: String?, categoryId: String, startDateTime: LocalDateTime?, endDateTime: LocalDateTime?, reminderEnabled: Boolean, reminderMinutes: Int?, priority: Priority) {
+                fun addTask(title: String, description: String?, categoryId: String, startDateTime: LocalDateTime?, endDateTime: LocalDateTime?, reminderEnabled: Boolean, reminderMinutes: Int?, priority: Priority) {
         viewModelScope.launch {
             Log.d("HomeViewModel", "Adding task with title: $title, description: $description, categoryId: $categoryId, startDateTime: $startDateTime, endDateTime: $endDateTime, reminderEnabled: $reminderEnabled, reminderMinutes: $reminderMinutes, priority: $priority")
             val newTask = Task(
@@ -174,4 +177,8 @@ class HomeViewModel @Inject constructor(
     fun dismissRecurringActionDialog() {
         pendingRecurringAction = null
     }
+
+                suspend fun exportDailyPlan(date: LocalDate = selectedDate.value.toLocalDate()): String {
+                    return exportManager.exportDailyPlan(date)
+                }
 }

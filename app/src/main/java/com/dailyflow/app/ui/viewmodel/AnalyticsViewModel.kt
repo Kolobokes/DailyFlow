@@ -25,6 +25,7 @@ private data class DateRange(val start: LocalDate, val end: LocalDate) {
 }
 
 enum class AnalyticsPeriodPreset {
+    TODAY,
     WEEK,
     MONTH,
     QUARTER,
@@ -63,8 +64,8 @@ data class WorkloadHeatmapCell(
 )
 
 data class AnalyticsUiState(
-    val selectedPreset: AnalyticsPeriodPreset = AnalyticsPeriodPreset.MONTH,
-    val startDate: LocalDate = LocalDate.now().minusDays(29),
+    val selectedPreset: AnalyticsPeriodPreset = AnalyticsPeriodPreset.TODAY,
+    val startDate: LocalDate = LocalDate.now(),
     val endDate: LocalDate = LocalDate.now(),
     val categoryDistribution: List<CategoryDistribution> = emptyList(),
     val totalTasks: Int = 0,
@@ -81,16 +82,16 @@ class AnalyticsViewModel @Inject constructor(
     categoryRepository: CategoryRepository
 ) : ViewModel() {
 
-    private val _selectedPreset = MutableStateFlow(AnalyticsPeriodPreset.MONTH)
+    private val _selectedPreset = MutableStateFlow(AnalyticsPeriodPreset.TODAY)
     private val _customRange = MutableStateFlow(
         DateRange(
-            start = LocalDate.now().minusDays(29),
+            start = LocalDate.now(),
             end = LocalDate.now()
         )
     )
     private val _currentRange = MutableStateFlow(
         DateRange(
-            start = LocalDate.now().minusDays(29),
+            start = LocalDate.now(),
             end = LocalDate.now()
         )
     )
@@ -211,6 +212,7 @@ class AnalyticsViewModel @Inject constructor(
     private fun presetRange(preset: AnalyticsPeriodPreset): DateRange {
         val end = LocalDate.now()
         return when (preset) {
+            AnalyticsPeriodPreset.TODAY -> DateRange(end, end)
             AnalyticsPeriodPreset.WEEK -> DateRange(end.minusDays(6), end)
             AnalyticsPeriodPreset.MONTH -> DateRange(end.minusDays(29), end)
             AnalyticsPeriodPreset.QUARTER -> DateRange(end.minusDays(89), end)
@@ -252,11 +254,16 @@ class AnalyticsViewModel @Inject constructor(
         normalizedRange: DateRange,
         tasks: List<Task>
     ): CompletionStats? {
-        val statsRange = if (preset == AnalyticsPeriodPreset.CUSTOM) {
-            normalizedRange.ensureOrder()
-        } else {
-            val today = LocalDate.now()
-            DateRange(today, today)
+        val statsRange = when (preset) {
+            AnalyticsPeriodPreset.CUSTOM -> normalizedRange.ensureOrder()
+            AnalyticsPeriodPreset.TODAY -> {
+                val today = LocalDate.now()
+                DateRange(today, today)
+            }
+            else -> {
+                val today = LocalDate.now()
+                DateRange(today, today)
+            }
         }
         val startDateTime = statsRange.start.atStartOfDay()
         val endDateTime = statsRange.end.plusDays(1).atStartOfDay()

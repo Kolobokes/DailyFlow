@@ -11,6 +11,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import com.dailyflow.app.ui.navigation.DailyFlowNavigation
@@ -32,13 +33,15 @@ class MainActivity : ComponentActivity() {
         
         askNotificationPermission()
         
+        val taskIdFromIntent = intent?.getStringExtra("taskId")
+        
         setContent {
             DailyFlowTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    DailyFlowNavigation()
+                    DailyFlowNavigation(initialTaskId = taskIdFromIntent, activity = this@MainActivity)
                 }
             }
         }

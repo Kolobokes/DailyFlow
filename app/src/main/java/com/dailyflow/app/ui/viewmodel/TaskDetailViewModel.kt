@@ -14,6 +14,8 @@ import com.dailyflow.app.data.repository.CategoryRepository
 import com.dailyflow.app.data.repository.TaskRepository
 import com.dailyflow.app.data.repository.RecurringUpdateRequest
 import com.dailyflow.app.notifications.ReminderScheduler
+import com.dailyflow.app.export.TextExportManager
+import com.dailyflow.app.util.FileStorageManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -27,6 +29,7 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 import javax.inject.Inject
 
@@ -50,6 +53,8 @@ class TaskDetailViewModel @Inject constructor(
     private val taskRepository: TaskRepository,
     private val categoryRepository: CategoryRepository,
     private val reminderScheduler: ReminderScheduler,
+    private val exportManager: TextExportManager,
+    private val fileStorageManager: FileStorageManager,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -102,6 +107,18 @@ class TaskDetailViewModel @Inject constructor(
         }
     }
 
+    suspend fun copyFileToStorage(sourceUri: android.net.Uri, taskId: String): String? {
+        return fileStorageManager.copyFileToStorage(sourceUri, taskId)
+    }
+
+    fun getFileUri(fileName: String): android.net.Uri? {
+        return fileStorageManager.getFileUri(fileName)
+    }
+
+    fun getFile(fileName: String): java.io.File? {
+        return fileStorageManager.getFile(fileName)
+    }
+
     fun saveTask(
         title: String,
         description: String?,
@@ -113,7 +130,8 @@ class TaskDetailViewModel @Inject constructor(
         priority: Priority,
         isRecurring: Boolean,
         recurrenceRule: RecurrenceRule?,
-        scope: RecurrenceScope? = null
+        scope: RecurrenceScope? = null,
+        attachedFileName: String? = null
     ) {
         viewModelScope.launch {
             val needsExactAlarmPermission = reminderEnabled &&
@@ -142,9 +160,17 @@ class TaskDetailViewModel @Inject constructor(
                 return@launch
             }
 
+            val finalTaskId = taskId ?: UUID.randomUUID().toString()
+            
+            // Если есть старый файл и он отличается от нового, удаляем старый
+            val oldTask = _uiState.value.task
+            if (oldTask != null && oldTask.attachedFileUri != null && oldTask.attachedFileUri != attachedFileName) {
+                fileStorageManager.deleteFile(oldTask.attachedFileUri!!)
+            }
+            
             val taskToSave = if (taskId == null) {
                 Task(
-                    id = UUID.randomUUID().toString(),
+                    id = finalTaskId,
                     title = title,
                     description = description,
                     categoryId = categoryId,
@@ -152,7 +178,8 @@ class TaskDetailViewModel @Inject constructor(
                     endDateTime = endDateTime,
                     reminderEnabled = reminderEnabled,
                     reminderMinutes = reminderMinutes,
-                    priority = priority
+                    priority = priority,
+                    attachedFileUri = attachedFileName
                 )
             } else {
                 _uiState.value.task!!.copy(
@@ -163,7 +190,8 @@ class TaskDetailViewModel @Inject constructor(
                     endDateTime = endDateTime,
                     reminderEnabled = reminderEnabled,
                     reminderMinutes = reminderMinutes,
-                    priority = priority
+                    priority = priority,
+                    attachedFileUri = attachedFileName
                 )
             }
 
@@ -219,6 +247,11 @@ class TaskDetailViewModel @Inject constructor(
 
     fun dismissExactAlarmPermissionDialog() {
         _showExactAlarmPermissionDialog.value = false
+    }
+
+    suspend fun exportCurrentTask(): String? {
+        val id = taskId ?: return null
+        return exportManager.exportTask(id)
     }
 }
 

@@ -21,6 +21,7 @@ data class Task(
     val isException: Boolean = false,
     val originalStartDateTime: LocalDateTime? = null,
     val sequenceNumber: Int? = null,
+    val attachedFileUri: String? = null,
     val createdAt: LocalDateTime = LocalDateTime.now(),
     val updatedAt: LocalDateTime = LocalDateTime.now()
 )

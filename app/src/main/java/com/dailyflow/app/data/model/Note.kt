@@ -16,6 +16,7 @@ data class Note(
     val isCompleted: Boolean = false,
     val isChecklist: Boolean = false,
     val checklistItems: List<ChecklistItem>? = null,
+    val attachedFileUri: String? = null,
     val createdAt: LocalDateTime = LocalDateTime.now(),
     val updatedAt: LocalDateTime = LocalDateTime.now()
 )

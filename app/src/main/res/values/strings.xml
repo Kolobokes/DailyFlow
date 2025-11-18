@@ -9,6 +9,7 @@
     <!-- Analytics -->
     <string name="analytics_title">Отчёты</string>
     <string name="analytics_period_label">Период</string>
+    <string name="analytics_period_today">Сегодня</string>
     <string name="analytics_period_week">7 дней</string>
     <string name="analytics_period_month">30 дней</string>
     <string name="analytics_period_quarter">90 дней</string>
@@ -73,6 +74,9 @@
     <string name="new_note">Новая заметка</string>
     <string name="edit_note">Редактировать заметку</string>
     <string name="select_date">Выбрать дату</string>
+    <string name="unsaved_changes_title">Несохраненные изменения</string>
+    <string name="unsaved_changes_message">У вас есть несохраненные изменения. Что вы хотите сделать?</string>
+    <string name="discard_changes">Не сохранять</string>
     
     <!-- Categories -->
     <string name="category_name">Название категории</string>

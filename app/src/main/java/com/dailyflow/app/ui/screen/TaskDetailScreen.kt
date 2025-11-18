@@ -3,10 +3,14 @@ package com.dailyflow.app.ui.screen
 import android.content.Intent
 import android.content.res.Configuration
 import android.provider.Settings
+import android.widget.Toast
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.rememberScrollState
@@ -44,10 +48,12 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
+import java.nio.charset.StandardCharsets
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.time.temporal.ChronoUnit
 import java.util.Locale
+import java.util.UUID
 import androidx.compose.ui.res.stringResource
 import com.dailyflow.app.R
 
@@ -86,8 +92,14 @@ fun TaskDetailScreen(
     var repeatOccurrenceCount by remember { mutableStateOf("") }
     var weeklyDays by remember { mutableStateOf(setOf<java.time.DayOfWeek>()) }
     var monthlyDayOfMonth by remember { mutableStateOf<Int?>(null) }
+    var attachedFileName by remember { mutableStateOf<String?>(null) }
+    var attachedFileDisplayName by remember { mutableStateOf<String?>(null) }
+    val currentTaskId = remember(uiState.task?.id) { 
+        uiState.task?.id ?: UUID.randomUUID().toString() 
+    }
 
     var previewOccurrences by remember { mutableStateOf(0) }
+    val exportTimestampFormatter = remember { DateTimeFormatter.ofPattern("yyyyMMdd_HHmm") }
 
     var showStartDatePicker by remember { mutableStateOf(false) }
     var showStartTimePicker by remember { mutableStateOf(false) }
@@ -109,9 +121,52 @@ fun TaskDetailScreen(
     val repeatEndDatePickerState = rememberDatePickerState()
 
     val filePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent(),
-        onResult = { uri -> /* TODO: Handle file URI */ }
-    )
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            coroutineScope.launch {
+                val fileName = viewModel.copyFileToStorage(it, currentTaskId)
+                if (fileName != null) {
+                    attachedFileName = fileName
+                    // Получаем отображаемое имя файла
+                    try {
+                        context.contentResolver.query(it, null, null, null, null)?.use { cursor ->
+                            val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                            if (nameIndex >= 0 && cursor.moveToFirst()) {
+                                attachedFileDisplayName = cursor.getString(nameIndex) ?: "Файл"
+                            } else {
+                                attachedFileDisplayName = "Файл"
+                            }
+                        } ?: run {
+                            attachedFileDisplayName = it.path?.substringAfterLast('/') ?: "Файл"
+                        }
+                    } catch (e: Exception) {
+                        attachedFileDisplayName = "Файл"
+                    }
+                } else {
+                    Toast.makeText(context, "Не удалось сохранить файл", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+    var pendingTaskExport by remember { mutableStateOf<String?>(null) }
+    val taskExportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/plain")
+    ) { uri ->
+        val text = pendingTaskExport
+        if (uri != null && text != null) {
+            runCatching {
+                context.contentResolver.openOutputStream(uri)?.use { stream ->
+                    stream.write(text.toByteArray(StandardCharsets.UTF_8))
+                }
+            }.onSuccess {
+                Toast.makeText(context, "Задача сохранена в файл", Toast.LENGTH_SHORT).show()
+            }.onFailure {
+                Toast.makeText(context, "Не удалось сохранить файл", Toast.LENGTH_SHORT).show()
+            }
+        }
+        pendingTaskExport = null
+    }
 
     LaunchedEffect(Unit) {
         launch {
@@ -160,6 +215,22 @@ fun TaskDetailScreen(
             endDateTime = task.endDateTime
             reminderEnabled = task.reminderEnabled
             reminderMinutes = task.reminderMinutes?.toString() ?: "60"
+            attachedFileName = task.attachedFileUri
+            // Получаем отображаемое имя файла из сохраненного файла
+            if (task.attachedFileUri != null) {
+                val file = viewModel.getFile(task.attachedFileUri!!)
+                attachedFileDisplayName = file?.name?.let { fileName ->
+                    // Извлекаем оригинальное имя из формата: taskId_originalFileName
+                    val taskIdPrefix = "${task.id}_"
+                    if (fileName.startsWith(taskIdPrefix)) {
+                        fileName.removePrefix(taskIdPrefix)
+                    } else {
+                        fileName
+                    }
+                } ?: "Файл"
+            } else {
+                attachedFileDisplayName = null
+            }
         }
         if (frequency in listOf(RecurrenceFrequency.WEEKLY, RecurrenceFrequency.WEEKLY_DAYS) && weeklyDays.isEmpty()) {
             weeklyDays = setOf((startDateTime ?: LocalDateTime.now()).dayOfWeek)
@@ -217,6 +288,27 @@ fun TaskDetailScreen(
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
                     }
+                },
+                actions = {
+                    if (!uiState.isNewTask) {
+                        IconButton(onClick = {
+                            coroutineScope.launch {
+                                val exportText = viewModel.exportCurrentTask()
+                                if (exportText == null) {
+                                    Toast.makeText(context, "Не удалось подготовить файл", Toast.LENGTH_SHORT).show()
+                                    return@launch
+                                }
+                                val baseName = (uiState.task?.title ?: "task").ifBlank { "task" }
+                                val sanitized = baseName.replace(Regex("[\\\\/:*?\"<>|]"), "_").take(40)
+                                val timestamp = LocalDateTime.now().format(exportTimestampFormatter)
+                                val fileName = "${sanitized.ifBlank { "task" }}_$timestamp.txt"
+                                pendingTaskExport = exportText
+                                taskExportLauncher.launch(fileName)
+                            }
+                        }) {
+                            Icon(Icons.Default.FileDownload, contentDescription = "Экспортировать задачу")
+                        }
+                    }
                 }
             )
         }
@@ -235,6 +327,34 @@ fun TaskDetailScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                // Статус задачи - в самом верху
+                if (!uiState.isNewTask && uiState.task != null) {
+                    val task = uiState.task!!
+                    val (statusColor, statusLabel) = when (task.status) {
+                        com.dailyflow.app.data.model.TaskStatus.COMPLETED -> Color(0xFF4CAF50) to "Выполнена"
+                        com.dailyflow.app.data.model.TaskStatus.CANCELLED -> Color(0xFFE53935) to "Отменена"
+                        com.dailyflow.app.data.model.TaskStatus.PENDING -> MaterialTheme.colorScheme.secondary to "Не выполнена"
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Start
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .background(statusColor.copy(alpha = 0.15f), shape = CircleShape)
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Text(
+                                text = statusLabel,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = statusColor
+                            )
+                        }
+                    }
+                    Divider()
+                }
+                
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
@@ -366,15 +486,95 @@ fun TaskDetailScreen(
 
                 Divider()
 
+                // Секция прикрепленного файла
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Прикрепленный файл", style = MaterialTheme.typography.titleSmall)
+                        Row {
+                            if (attachedFileName != null) {
+                                IconButton(onClick = { 
+                                    attachedFileName?.let { fileName ->
+                                        viewModel.getFile(fileName)?.delete()
+                                    }
+                                    attachedFileName = null
+                                    attachedFileDisplayName = null
+                                }) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Удалить файл")
+                                }
+                            }
+                            IconButton(onClick = { filePickerLauncher.launch("*/*") }) {
+                                Icon(Icons.Default.AttachFile, contentDescription = "Прикрепить файл")
+                            }
+                        }
+                    }
+                    
+                    if (attachedFileName != null) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            onClick = {
+                                try {
+                                    val file = viewModel.getFile(attachedFileName!!)
+                                    if (file != null && file.exists()) {
+                                        val uri = viewModel.getFileUri(attachedFileName!!)
+                                        if (uri != null) {
+                                            val intent = Intent(Intent.ACTION_VIEW).apply {
+                                                setDataAndType(uri, context.contentResolver.getType(uri) ?: "*/*")
+                                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                            }
+                                            context.startActivity(Intent.createChooser(intent, "Открыть файл"))
+                                        } else {
+                                            Toast.makeText(context, "Не удалось открыть файл", Toast.LENGTH_SHORT).show()
+                                        }
+                                    } else {
+                                        Toast.makeText(context, "Файл не найден", Toast.LENGTH_SHORT).show()
+                                    }
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, "Не удалось открыть файл: ${e.message}", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.InsertDriveFile,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = attachedFileDisplayName ?: "Файл",
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                    Text(
+                                        text = "Нажмите для открытия",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Divider()
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    IconButton(onClick = { filePickerLauncher.launch("*/*") }) {
-                        Icon(Icons.Default.AttachFile, contentDescription = "Прикрепить файл")
-                    }
-
                     PriorityIcon(priority = priority, onClick = {
                         priority = when(priority) {
                             Priority.LOW -> Priority.MEDIUM
@@ -410,7 +610,8 @@ fun TaskDetailScreen(
                                 repeatEndType = repeatEndType,
                                 repeatEndDate = repeatEndDate,
                                 repeatOccurrenceCount = repeatOccurrenceCount.toIntOrNull()
-                            )
+                            ),
+                            attachedFileName = attachedFileName
                         )
                     }
                 }, modifier = Modifier.fillMaxWidth()) {

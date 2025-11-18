@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -27,6 +29,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -36,6 +39,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -65,7 +69,12 @@ import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.time.Month
 import java.util.Locale
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import java.nio.charset.StandardCharsets
 import kotlinx.coroutines.flow.collectLatest
 import kotlin.math.max
 
@@ -85,6 +94,28 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltView
 
     val selectedLocalDate = selectedDate.toLocalDate()
     val selectedKotlinDate = selectedLocalDate.toKotlinLocalDate()
+    val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val fileDateFormatter = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.ROOT) }
+    var pendingDailyPlanExport by remember { mutableStateOf<String?>(null) }
+
+    val dailyPlanExportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/plain")
+    ) { uri ->
+        val text = pendingDailyPlanExport
+        if (uri != null && text != null) {
+            runCatching {
+                context.contentResolver.openOutputStream(uri)?.use { stream ->
+                    stream.write(text.toByteArray(StandardCharsets.UTF_8))
+                }
+            }.onSuccess {
+                Toast.makeText(context, "План дня сохранён", Toast.LENGTH_SHORT).show()
+            }.onFailure {
+                Toast.makeText(context, "Не удалось сохранить файл", Toast.LENGTH_SHORT).show()
+            }
+        }
+        pendingDailyPlanExport = null
+    }
 
     LaunchedEffect(Unit) {
         viewModel.recurringActionDialog.collectLatest { state ->
@@ -119,20 +150,67 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltView
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.clickable { showCalendar = !showCalendar }
                 ) {
-                Text(
-                        text = selectedDate.format(
+                    Column(
+                        horizontalAlignment = Alignment.Start,
+                        modifier = Modifier.padding(end = 8.dp)
+                    ) {
+                        val isToday = selectedLocalDate == LocalDate.now()
+                        val dayOfWeek = selectedLocalDate.dayOfWeek.getDisplayName(TextStyle.FULL, Locale("ru"))
+                        val dateText = selectedDate.format(
                             DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale("ru"))
-                        ),
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 20.sp
-                )
+                        )
+                        
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = dateText,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 20.sp,
+                                color = if (isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                            )
+                            if (isToday) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .background(
+                                            MaterialTheme.colorScheme.primary,
+                                            shape = CircleShape
+                                        )
+                                )
+                            }
+                        }
+                        Text(
+                            text = dayOfWeek,
+                            fontWeight = FontWeight.Normal,
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        )
+                    }
                     Icon(
                         imageVector = if (showCalendar) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                         contentDescription = if (showCalendar) "Свернуть календарь" else "Развернуть календарь"
                     )
                 }
-                IconButton(onClick = { viewModel.selectNextDay() }) {
-                    Icon(Icons.Default.ArrowForward, contentDescription = "Следующий день")
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = { viewModel.selectNextDay() }) {
+                        Icon(Icons.Default.ArrowForward, contentDescription = "Следующий день")
+                    }
+                    IconButton(onClick = {
+                        coroutineScope.launch {
+                            val exportText = runCatching {
+                                viewModel.exportDailyPlan(selectedLocalDate)
+                            }.onFailure {
+                                Toast.makeText(context, "Не удалось подготовить файл", Toast.LENGTH_SHORT).show()
+                            }.getOrNull() ?: return@launch
+                            pendingDailyPlanExport = exportText
+                            val fileName = "plan_${selectedLocalDate.format(fileDateFormatter)}.txt"
+                            dailyPlanExportLauncher.launch(fileName)
+                        }
+                    }) {
+                        Icon(Icons.Default.FileDownload, contentDescription = "Экспортировать план")
+                    }
                 }
             }
 
@@ -436,7 +514,15 @@ private fun VerticalTimeline(
                     for (hour in 0..23) {
                         val hourStart = dayStart.plusHours(hour.toLong())
                         val hourEnd = if (hour == 23) dayEnd else hourStart.plusHours(1)
-                        val occupiedTasks = slottedTasks.filter { it.effectiveStart < hourEnd && it.effectiveEnd > hourStart }
+                        // Проверяем, есть ли задачи, которые полностью занимают этот час
+                        // Задача считается занимающей слот, если она начинается в этом часе
+                        val occupiedTasks = slottedTasks.filter { 
+                            val taskStart = it.effectiveStart
+                            val taskEnd = it.effectiveEnd
+                            // Задача занимает слот, если она начинается в этом часе ИЛИ продолжается с предыдущего часа
+                            // Но для пустого слота показываем кнопку добавления, если нет задач, начинающихся именно в этом часе
+                            taskStart >= hourStart && taskStart < hourEnd
+                        }
                         val occupied = occupiedTasks.isNotEmpty()
                         val slotColor = occupiedTasks.firstOrNull()?.color
                         HourSlotBox(

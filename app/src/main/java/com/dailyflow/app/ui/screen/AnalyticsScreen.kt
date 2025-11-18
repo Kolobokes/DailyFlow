@@ -230,6 +230,7 @@ private fun PeriodSelection(
                         Text(
                             text = stringResource(
                                 when (preset) {
+                                    AnalyticsPeriodPreset.TODAY -> R.string.analytics_period_today
                                     AnalyticsPeriodPreset.WEEK -> R.string.analytics_period_week
                                     AnalyticsPeriodPreset.MONTH -> R.string.analytics_period_month
                                     AnalyticsPeriodPreset.QUARTER -> R.string.analytics_period_quarter
