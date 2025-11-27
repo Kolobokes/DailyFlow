@@ -319,8 +319,8 @@ fun NoteDetailScreen(
             dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text(stringResource(R.string.cancel)) } }
         ) {
             CompositionLocalProvider(
-                LocalContext provides russianContext,
-                LocalConfiguration provides russianConfiguration
+                LocalContext provides localizedContext,
+                LocalConfiguration provides localizedConfiguration
             ) {
                 DatePicker(state = datePickerState)
             }
@@ -384,7 +384,7 @@ fun NoteDetailScreen(
                                 noteExportLauncher.launch(fileName)
                             }
                         }) {
-                            Icon(Icons.Default.FileDownload, contentDescription = stringResource(R.string.task_export_task))
+                            Icon(Icons.Default.FileDownload, contentDescription = stringResource(R.string.task_detail_export_task))
                         }
                         IconButton(onClick = { 
                             viewModel.deleteNote()

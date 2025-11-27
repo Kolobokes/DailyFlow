@@ -55,6 +55,7 @@ import java.time.temporal.ChronoUnit
 import java.util.Locale
 import java.util.UUID
 import androidx.compose.ui.res.stringResource
+import androidx.appcompat.app.AppCompatDelegate
 import com.dailyflow.app.R
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -138,18 +139,18 @@ fun TaskDetailScreen(
                         context.contentResolver.query(it, null, null, null, null)?.use { cursor ->
                             val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
                             if (nameIndex >= 0 && cursor.moveToFirst()) {
-                                attachedFileDisplayName = cursor.getString(nameIndex) ?: stringResource(R.string.file_default_name)
+                                attachedFileDisplayName = cursor.getString(nameIndex) ?: context.getString(R.string.file_default_name)
                             } else {
-                                attachedFileDisplayName = stringResource(R.string.file_default_name)
+                                attachedFileDisplayName = context.getString(R.string.file_default_name)
                             }
                         } ?: run {
-                            attachedFileDisplayName = it.path?.substringAfterLast('/') ?: stringResource(R.string.file_default_name)
+                            attachedFileDisplayName = it.path?.substringAfterLast('/') ?: context.getString(R.string.file_default_name)
                         }
                     } catch (e: Exception) {
-                        attachedFileDisplayName = stringResource(R.string.file_default_name)
+                        attachedFileDisplayName = context.getString(R.string.file_default_name)
                     }
                 } else {
-                    Toast.makeText(context, stringResource(R.string.file_save_error), Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.file_save_error), Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -165,9 +166,9 @@ fun TaskDetailScreen(
                     stream.write(text.toByteArray(StandardCharsets.UTF_8))
                 }
             }.onSuccess {
-                Toast.makeText(context, stringResource(R.string.task_saved_to_file), Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.task_saved_to_file), Toast.LENGTH_SHORT).show()
             }.onFailure {
-                Toast.makeText(context, stringResource(R.string.file_save_error), Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.file_save_error), Toast.LENGTH_SHORT).show()
             }
         }
         pendingTaskExport = null
@@ -534,15 +535,15 @@ fun TaskDetailScreen(
                                                 setDataAndType(uri, context.contentResolver.getType(uri) ?: "*/*")
                                                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                             }
-                                            context.startActivity(Intent.createChooser(intent, stringResource(R.string.task_open_file)))
+                                            context.startActivity(Intent.createChooser(intent, context.getString(R.string.task_open_file)))
                                         } else {
-                                            Toast.makeText(context, stringResource(R.string.task_file_not_found), Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, context.getString(R.string.task_file_not_found), Toast.LENGTH_SHORT).show()
                                         }
                                     } else {
-                                        Toast.makeText(context, stringResource(R.string.task_file_not_found), Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, context.getString(R.string.task_file_not_found), Toast.LENGTH_SHORT).show()
                                     }
                                 } catch (e: Exception) {
-                                    Toast.makeText(context, stringResource(R.string.task_file_open_error, e.message), Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, context.getString(R.string.task_file_open_error, e.message ?: ""), Toast.LENGTH_SHORT).show()
                                 }
                             }
                         ) {
@@ -641,8 +642,8 @@ fun TaskDetailScreen(
             dismissButton = { TextButton(onClick = { showStartDatePicker = false }) { Text(stringResource(R.string.cancel)) } }
         ) {
             CompositionLocalProvider(
-                LocalContext provides russianContext,
-                LocalConfiguration provides russianConfiguration
+                LocalContext provides localizedContext,
+                LocalConfiguration provides localizedConfiguration
             ) {
                 DatePicker(state = startDatePickerState)
             }
@@ -696,8 +697,8 @@ fun TaskDetailScreen(
             dismissButton = { TextButton(onClick = { showRepeatEndDatePicker = false }) { Text(stringResource(R.string.cancel)) } }
         ) {
             CompositionLocalProvider(
-                LocalContext provides russianContext,
-                LocalConfiguration provides russianConfiguration
+                LocalContext provides localizedContext,
+                LocalConfiguration provides localizedConfiguration
             ) {
                 DatePicker(state = repeatEndDatePickerState)
             }
@@ -773,8 +774,8 @@ fun TaskDetailScreen(
             dismissButton = { TextButton(onClick = { showEndDatePicker = false }) { Text(stringResource(R.string.cancel)) } }
         ) {
             CompositionLocalProvider(
-                LocalContext provides russianContext,
-                LocalConfiguration provides russianConfiguration
+                LocalContext provides localizedContext,
+                LocalConfiguration provides localizedConfiguration
             ) {
                 DatePicker(state = endDatePickerState)
             }
