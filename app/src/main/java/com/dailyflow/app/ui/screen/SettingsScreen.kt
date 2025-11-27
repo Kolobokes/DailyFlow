@@ -1,6 +1,8 @@
 package com.dailyflow.app.ui.screen
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -26,6 +28,24 @@ fun SettingsScreen(
 ) {
     val privacyAccepted by viewModel.privacyAccepted.collectAsState()
     val currentLanguage by viewModel.currentLanguage.collectAsState()
+    var showPrivacyDialog by remember { mutableStateOf(false) }
+
+    if (showPrivacyDialog) {
+        AlertDialog(
+            onDismissRequest = { showPrivacyDialog = false },
+            title = { Text(stringResource(R.string.settings_privacy_policy_dialog_title)) },
+            text = {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    Text(stringResource(R.string.settings_privacy_policy_text))
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showPrivacyDialog = false }) {
+                    Text(stringResource(R.string.ok))
+                }
+            }
+        )
+    }
     
     LazyColumn(
         modifier = Modifier
@@ -142,7 +162,7 @@ fun SettingsScreen(
                         icon = Icons.Default.PrivacyTip,
                         title = stringResource(R.string.settings_privacy_policy_title),
                         subtitle = stringResource(R.string.settings_privacy_policy_subtitle),
-                        onClick = { /* TODO: Open privacy policy */ }
+                        onClick = { showPrivacyDialog = true }
                     )
                 }
             }
