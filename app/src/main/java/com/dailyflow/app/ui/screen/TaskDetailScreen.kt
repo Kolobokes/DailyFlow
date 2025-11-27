@@ -201,6 +201,7 @@ fun TaskDetailScreen(
             val defaultDate = uiState.defaultDate ?: LocalDate.now()
             val defaultStartTime = uiState.defaultStartTime ?: LocalTime.now().plusHours(1).truncatedTo(ChronoUnit.HOURS)
             val defaultEndTime = uiState.defaultEndTime ?: defaultStartTime.plusHours(1)
+            reminderMinutes = uiState.defaultReminderMinutes.toString()
             
             startDateTime = LocalDateTime.of(defaultDate, defaultStartTime)
             endDateTime = LocalDateTime.of(defaultDate, defaultEndTime)
@@ -259,8 +260,8 @@ fun TaskDetailScreen(
     if (showPermissionDialog) {
         AlertDialog(
             onDismissRequest = { viewModel.dismissExactAlarmPermissionDialog() },
-            title = { Text("Требуется разрешение") },
-            text = { Text("Для надежной работы напоминаний приложению требуется специальное разрешение на установку точных будильников.") },
+            title = { Text(stringResource(R.string.task_detail_permission_title)) },
+            text = { Text(stringResource(R.string.task_detail_permission_message)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -269,12 +270,12 @@ fun TaskDetailScreen(
                         viewModel.dismissExactAlarmPermissionDialog()
                     }
                 ) {
-                    Text("Перейти в настройки")
+                    Text(stringResource(R.string.task_detail_permission_settings))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.dismissExactAlarmPermissionDialog() }) {
-                    Text("Отмена")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -283,10 +284,10 @@ fun TaskDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (uiState.isNewTask) "Новая задача" else "Редактировать задачу") },
+                title = { Text(if (uiState.isNewTask) stringResource(R.string.task_detail_title_new) else stringResource(R.string.task_detail_title_edit)) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
@@ -295,7 +296,7 @@ fun TaskDetailScreen(
                             coroutineScope.launch {
                                 val exportText = viewModel.exportCurrentTask()
                                 if (exportText == null) {
-                                    Toast.makeText(context, "Не удалось подготовить файл", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, context.getString(R.string.file_save_error), Toast.LENGTH_SHORT).show()
                                     return@launch
                                 }
                                 val baseName = (uiState.task?.title ?: "task").ifBlank { "task" }
@@ -306,7 +307,7 @@ fun TaskDetailScreen(
                                 taskExportLauncher.launch(fileName)
                             }
                         }) {
-                            Icon(Icons.Default.FileDownload, contentDescription = "Экспортировать задачу")
+                            Icon(Icons.Default.FileDownload, contentDescription = stringResource(R.string.task_detail_export_task))
                         }
                     }
                 }
@@ -331,9 +332,9 @@ fun TaskDetailScreen(
                 if (!uiState.isNewTask && uiState.task != null) {
                     val task = uiState.task!!
                     val (statusColor, statusLabel) = when (task.status) {
-                        com.dailyflow.app.data.model.TaskStatus.COMPLETED -> Color(0xFF4CAF50) to "Выполнена"
-                        com.dailyflow.app.data.model.TaskStatus.CANCELLED -> Color(0xFFE53935) to "Отменена"
-                        com.dailyflow.app.data.model.TaskStatus.PENDING -> MaterialTheme.colorScheme.secondary to "Не выполнена"
+                        com.dailyflow.app.data.model.TaskStatus.COMPLETED -> Color(0xFF4CAF50) to stringResource(R.string.task_detail_status_completed)
+                        com.dailyflow.app.data.model.TaskStatus.CANCELLED -> Color(0xFFE53935) to stringResource(R.string.task_detail_status_cancelled)
+                        com.dailyflow.app.data.model.TaskStatus.PENDING -> MaterialTheme.colorScheme.secondary to stringResource(R.string.task_detail_status_pending)
                     }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -358,7 +359,7 @@ fun TaskDetailScreen(
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("Название") },
+                    label = { Text(stringResource(R.string.task_detail_label_name)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
@@ -366,7 +367,7 @@ fun TaskDetailScreen(
                 OutlinedTextField(
                     value = description ?: "",
                     onValueChange = { description = it },
-                    label = { Text("Описание") },
+                    label = { Text(stringResource(R.string.task_detail_label_description)) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(150.dp)
@@ -377,7 +378,7 @@ fun TaskDetailScreen(
                         value = selectedCategory?.name ?: "",
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Категория") },
+                        label = { Text(stringResource(R.string.task_category)) },
                         trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) },
                         modifier = Modifier.fillMaxWidth().menuAnchor()
                     )
@@ -398,14 +399,14 @@ fun TaskDetailScreen(
                     Button(onClick = { showStartDatePicker = true }) {
                         Icon(Icons.Default.CalendarToday, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = startDateTime?.format(DateTimeFormatter.ofPattern("dd.MM HH:mm")) ?: "Начало")
+                        Text(text = startDateTime?.format(DateTimeFormatter.ofPattern("dd.MM HH:mm")) ?: stringResource(R.string.task_detail_label_start))
                     }
                     Button(onClick = {
                         showEndDatePicker = true
                     }) {
                         Icon(Icons.Default.CalendarToday, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = endDateTime?.format(DateTimeFormatter.ofPattern("dd.MM HH:mm")) ?: "Конец")
+                        Text(text = endDateTime?.format(DateTimeFormatter.ofPattern("dd.MM HH:mm")) ?: stringResource(R.string.task_detail_label_end))
                     }
                 }
 
@@ -414,13 +415,13 @@ fun TaskDetailScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Text("Напомнить")
+                    Text(stringResource(R.string.task_detail_label_reminder))
                     Switch(checked = reminderEnabled, onCheckedChange = { reminderEnabled = it })
                     if (reminderEnabled) {
                         OutlinedTextField(
                             value = reminderMinutes,
                             onValueChange = { reminderMinutes = it },
-                            label = { Text("За (мин)") },
+                            label = { Text(stringResource(R.string.task_detail_label_reminder_minutes)) },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             modifier = Modifier.width(100.dp)
                         )
@@ -438,7 +439,7 @@ fun TaskDetailScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Повторять")
+                        Text(stringResource(R.string.task_detail_label_repeat))
                         Switch(
                             checked = isRecurring,
                             onCheckedChange = { checked ->
@@ -651,7 +652,7 @@ fun TaskDetailScreen(
 
         AlertDialog(
             onDismissRequest = { showStartTimePicker = false },
-            title = { Text("Выберите время") },
+            title = { Text(stringResource(R.string.task_detail_time_select)) },
             text = { SpinnerTimePicker(initialTime = initialTime, onTimeSelected = { tempTime = it }) },
             confirmButton = {
                 TextButton(onClick = { 
@@ -669,7 +670,7 @@ fun TaskDetailScreen(
                     Text(stringResource(R.string.ok))
                 }
             },
-            dismissButton = { TextButton(onClick = { showStartTimePicker = false }) { Text("Отмена") } }
+            dismissButton = { TextButton(onClick = { showStartTimePicker = false }) { Text(stringResource(R.string.cancel)) } }
         )
     }
 
@@ -705,14 +706,14 @@ fun TaskDetailScreen(
                 showScopeDialog = false
                 viewModel.dismissRecurrenceScopeDialog()
             },
-            title = { Text("Как применить изменения?") },
+            title = { Text(stringResource(R.string.task_detail_apply_changes_title)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(onClick = {
                         showScopeDialog = false
                         viewModel.onRecurrenceScopeSelected(RecurrenceScope.THIS)
                     }) {
-                        Text("Только эту задачу")
+                        Text(stringResource(R.string.task_detail_apply_this))
                     }
                     TextButton(
                         onClick = {
@@ -721,7 +722,7 @@ fun TaskDetailScreen(
                         },
                         enabled = allowSeriesScope
                     ) {
-                        Text("Эту и будущие задачи")
+                        Text(stringResource(R.string.task_detail_apply_future))
                     }
                     TextButton(
                         onClick = {
@@ -730,11 +731,11 @@ fun TaskDetailScreen(
                         },
                         enabled = allowSeriesScope
                     ) {
-                        Text("Всю серию")
+                        Text(stringResource(R.string.task_detail_apply_series))
                     }
                     if (!allowSeriesScope) {
                         Text(
-                            text = "Для применения к будущим задачам включите повторение и настройте правило.",
+                            text = stringResource(R.string.task_detail_apply_future_hint),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                         )
@@ -747,7 +748,7 @@ fun TaskDetailScreen(
                     showScopeDialog = false
                     viewModel.dismissRecurrenceScopeDialog()
                 }) {
-                    Text("Отмена")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -783,7 +784,7 @@ fun TaskDetailScreen(
 
         AlertDialog(
             onDismissRequest = { showEndTimePicker = false },
-            title = { Text("Выберите время") },
+            title = { Text(stringResource(R.string.task_detail_time_select)) },
             text = { SpinnerTimePicker(initialTime = initialTime, onTimeSelected = { tempTime = it }) },
             confirmButton = {
                 TextButton(onClick = { 
@@ -803,7 +804,7 @@ fun TaskDetailScreen(
                     Text(stringResource(R.string.ok))
                 }
             },
-            dismissButton = { TextButton(onClick = { showEndTimePicker = false }) { Text("Отмена") } }
+            dismissButton = { TextButton(onClick = { showEndTimePicker = false }) { Text(stringResource(R.string.cancel)) } }
         )
     }
 }
@@ -877,7 +878,7 @@ private fun RecurrenceConfig(
     previewOccurrences: Int
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Параметры повторения", style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.task_detail_recurrence_params), style = MaterialTheme.typography.titleMedium)
         FrequencySelector(frequency = frequency, onFrequencyChange = onFrequencyChange)
 
         Row(
@@ -887,11 +888,11 @@ private fun RecurrenceConfig(
             OutlinedTextField(
                 value = interval,
                 onValueChange = onIntervalChange,
-                label = { Text("Интервал") },
+                label = { Text(stringResource(R.string.task_detail_recurrence_interval)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.width(120.dp)
             )
-            Text("раз(а)")
+            Text(stringResource(R.string.task_detail_label_interval_unit))
         }
 
         when (frequency) {
@@ -916,7 +917,7 @@ private fun RecurrenceConfig(
         )
 
         Text(
-            text = "Будет создано $previewOccurrences задач",
+            text = stringResource(R.string.task_detail_recurrence_preview, previewOccurrences),
             style = MaterialTheme.typography.bodyMedium
         )
     }
@@ -929,10 +930,10 @@ private fun FrequencySelector(
     onFrequencyChange: (RecurrenceFrequency) -> Unit
 ) {
     val options = listOf(
-        RecurrenceFrequency.DAILY to "Ежедневно",
-        RecurrenceFrequency.WEEKLY to "Еженедельно",
-        RecurrenceFrequency.WEEKLY_DAYS to "По дням недели",
-        RecurrenceFrequency.MONTHLY to "Ежемесячно"
+        RecurrenceFrequency.DAILY to stringResource(R.string.task_detail_frequency_daily),
+        RecurrenceFrequency.WEEKLY to stringResource(R.string.task_detail_frequency_weekly),
+        RecurrenceFrequency.WEEKLY_DAYS to stringResource(R.string.task_detail_frequency_weekly_days),
+        RecurrenceFrequency.MONTHLY to stringResource(R.string.task_detail_frequency_monthly)
     )
     var expanded by remember { mutableStateOf(false) }
     ExposedDropdownMenuBox(
@@ -944,7 +945,7 @@ private fun FrequencySelector(
             onValueChange = {},
             readOnly = true,
             modifier = Modifier.menuAnchor(),
-            label = { Text("Частота") },
+            label = { Text(stringResource(R.string.task_detail_label_frequency)) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) }
         )
         ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -1005,7 +1006,7 @@ private fun MonthlyDaySelector(
     onDayChange: (Int?) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("День месяца")
+        Text(stringResource(R.string.task_detail_recurrence_day_of_month))
         OutlinedTextField(
             value = dayOfMonth?.toString() ?: "",
             onValueChange = { value ->
@@ -1013,7 +1014,7 @@ private fun MonthlyDaySelector(
                 val number = filtered.takeIf { it.isNotBlank() }?.toInt()
                 onDayChange(number?.coerceIn(1, 31))
             },
-            label = { Text("Число") },
+            label = { Text(stringResource(R.string.task_detail_recurrence_day)) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.width(120.dp)
         )
@@ -1031,14 +1032,14 @@ private fun RepeatEndSection(
     onRepeatOccurrenceCountChange: (String) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Повторение заканчивается", style = MaterialTheme.typography.bodyMedium)
+        Text(stringResource(R.string.task_detail_recurrence_ends), style = MaterialTheme.typography.bodyMedium)
         RepeatEndRadio(
-            label = "Никогда",
+            label = stringResource(R.string.task_detail_recurrence_never),
             selected = repeatEndType == RepeatEndType.NEVER,
             onClick = { onRepeatEndTypeChange(RepeatEndType.NEVER) }
         )
         RepeatEndRadio(
-            label = "После даты",
+            label = stringResource(R.string.task_detail_recurrence_end_date),
             selected = repeatEndType == RepeatEndType.END_DATE,
             onClick = { onRepeatEndTypeChange(RepeatEndType.END_DATE) }
         )
@@ -1046,11 +1047,11 @@ private fun RepeatEndSection(
             TextButton(onClick = onRepeatEndDateClick) {
                 Icon(Icons.Default.CalendarToday, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(repeatEndDate?.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")) ?: "Выбрать дату")
+                Text(repeatEndDate?.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")) ?: stringResource(R.string.select_date))
             }
         }
         RepeatEndRadio(
-            label = "После количества повторов",
+            label = stringResource(R.string.task_detail_recurrence_count),
             selected = repeatEndType == RepeatEndType.COUNT,
             onClick = { onRepeatEndTypeChange(RepeatEndType.COUNT) }
         )
@@ -1059,7 +1060,7 @@ private fun RepeatEndSection(
                 value = repeatOccurrenceCount,
                 onValueChange = onRepeatOccurrenceCountChange,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                label = { Text("Количество повторов") },
+                label = { Text(stringResource(R.string.task_detail_recurrence_count_label)) },
                 modifier = Modifier.width(180.dp)
             )
         }

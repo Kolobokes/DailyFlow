@@ -29,6 +29,8 @@ import com.dailyflow.app.data.model.Category
 import com.dailyflow.app.ui.navigation.Screen
 import com.dailyflow.app.ui.viewmodel.NotesViewModel
 import java.time.format.DateTimeFormatter
+import androidx.compose.ui.res.stringResource
+import com.dailyflow.app.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,7 +47,7 @@ fun NotesScreen(navController: NavController) {
                 val categoryId = if (selectedCategoryId != null && selectedCategoryId != "") selectedCategoryId else null
                 navController.navigate(Screen.NoteDetail.createRoute(null, categoryId)) 
             }) {
-                Icon(Icons.Default.Add, contentDescription = "Создать заметку")
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.new_note))
             }
         }
     ) {
@@ -60,7 +62,7 @@ fun NotesScreen(navController: NavController) {
                         modifier = Modifier.height(32.dp),
                         selected = selectedCategoryId == null,
                         onClick = { viewModel.selectCategory(null) },
-                        label = { Text("Все", maxLines = 1) }
+                        label = { Text(stringResource(R.string.filter_all), maxLines = 1) }
                     )
                 }
                 items(categories) { category ->
@@ -89,7 +91,7 @@ fun NotesScreen(navController: NavController) {
             Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Switch(checked = showCompleted, onCheckedChange = { viewModel.toggleShowCompleted(it) })
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Показывать выполненные")
+                Text(stringResource(R.string.show_completed))
             }
 
             LazyColumn(

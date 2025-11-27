@@ -172,27 +172,27 @@ fun OverdueScreen(
                 showRecurringDialog = false
                 viewModel.dismissRecurringActionDialog()
             },
-            title = { Text(if (isDelete) "Удаление повторяющейся задачи" else "Отмена повторяющейся задачи") },
+            title = { Text(if (isDelete) stringResource(R.string.overdue_delete_recurring_title) else stringResource(R.string.overdue_cancel_recurring_title)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Выберите, к каким задачам применить действие")
+                    Text(stringResource(R.string.overdue_apply_changes_title))
                     TextButton(onClick = {
                         showRecurringDialog = false
                         viewModel.onRecurringActionScopeSelected(RecurrenceScope.THIS)
                     }) {
-                        Text("Только к этой задаче")
+                        Text(stringResource(R.string.overdue_apply_this))
                     }
                     TextButton(onClick = {
                         showRecurringDialog = false
                         viewModel.onRecurringActionScopeSelected(RecurrenceScope.THIS_AND_FUTURE)
                     }) {
-                        Text("К этой и будущим задачам")
+                        Text(stringResource(R.string.overdue_apply_future))
                     }
                     TextButton(onClick = {
                         showRecurringDialog = false
                         viewModel.onRecurringActionScopeSelected(RecurrenceScope.ENTIRE_SERIES)
                     }) {
-                        Text("Ко всей серии")
+                        Text(stringResource(R.string.overdue_apply_series))
                     }
                 }
             },
@@ -202,7 +202,7 @@ fun OverdueScreen(
                     showRecurringDialog = false
                     viewModel.dismissRecurringActionDialog()
                 }) {
-                    Text("Отмена")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )

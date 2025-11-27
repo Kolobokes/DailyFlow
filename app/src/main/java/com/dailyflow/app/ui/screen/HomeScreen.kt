@@ -83,6 +83,10 @@ import kotlinx.coroutines.launch
 import java.nio.charset.StandardCharsets
 import kotlinx.coroutines.flow.collectLatest
 import kotlin.math.max
+import androidx.compose.ui.res.stringResource
+import com.dailyflow.app.R
+import androidx.core.os.LocaleListCompat
+import androidx.appcompat.app.AppCompatDelegate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -115,9 +119,9 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltView
                     stream.write(text.toByteArray(StandardCharsets.UTF_8))
                 }
             }.onSuccess {
-                Toast.makeText(context, "План дня сохранён", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.daily_plan_saved), Toast.LENGTH_SHORT).show()
             }.onFailure {
-                Toast.makeText(context, "Не удалось сохранить файл", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.file_save_error), Toast.LENGTH_SHORT).show()
             }
         }
         pendingDailyPlanExport = null
@@ -137,7 +141,7 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltView
                     Screen.TaskDetail.createRoute(null, selectedLocalDate.toString())
                 )
             }) {
-                Icon(Icons.Default.Add, contentDescription = "Добавить")
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add))
             }
         }
     ) { paddingValues ->
@@ -150,7 +154,7 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltView
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = { viewModel.selectPreviousDay() }) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Предыдущий день")
+                    Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.previous_day))
                 }
                 var showDatePicker by remember { mutableStateOf(false) }
                 val datePickerState = rememberDatePickerState(
@@ -166,10 +170,15 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltView
                             .padding(end = 8.dp)
                             .clickable { showDatePicker = true }
                     ) {
+                        val currentLocale = remember(context) { 
+                            val appLocales = AppCompatDelegate.getApplicationLocales()
+                            if (!appLocales.isEmpty) appLocales.get(0) ?: Locale.getDefault() else Locale.getDefault()
+                        }
+                        
                         val isToday = selectedLocalDate == LocalDate.now()
-                        val dayOfWeek = selectedLocalDate.dayOfWeek.getDisplayName(TextStyle.FULL, Locale("ru"))
+                        val dayOfWeek = selectedLocalDate.dayOfWeek.getDisplayName(TextStyle.FULL, currentLocale)
                         val dateText = selectedDate.format(
-                            DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale("ru"))
+                            DateTimeFormatter.ofPattern("dd MMMM yyyy", currentLocale)
                         )
                         
                         Row(
@@ -202,18 +211,23 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltView
                     }
                     Icon(
                         imageVector = if (showCalendar) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                        contentDescription = if (showCalendar) "Свернуть календарь" else "Развернуть календарь",
+                        contentDescription = if (showCalendar) stringResource(R.string.collapse_calendar) else stringResource(R.string.expand_calendar),
                         modifier = Modifier.clickable { showCalendar = !showCalendar }
                     )
                 }
                 
                 if (showDatePicker) {
-                    val russianContext = remember(context) {
-                        val config = android.content.res.Configuration(context.resources.configuration)
-                        config.setLocale(Locale("ru"))
+                    val currentLocale = remember(context) { 
+                        val appLocales = AppCompatDelegate.getApplicationLocales()
+                        if (!appLocales.isEmpty) appLocales.get(0) ?: Locale.getDefault() else Locale.getDefault()
+                    }
+                    
+                    val localizedContext = remember(context, currentLocale) {
+                        val config = Configuration(context.resources.configuration)
+                        config.setLocale(currentLocale)
                         context.createConfigurationContext(config)
                     }
-                    val russianConfiguration = remember(russianContext) { russianContext.resources.configuration }
+                    val localizedConfiguration = remember(localizedContext) { localizedContext.resources.configuration }
                     
                     DatePickerDialog(
                         onDismissRequest = { showDatePicker = false },
@@ -227,18 +241,14 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltView
                                 }
                                 showDatePicker = false
                             }) {
-                                Text("ОК")
+                                Text(stringResource(R.string.ok))
                             }
                         },
-                        dismissButton = {
-                            TextButton(onClick = { showDatePicker = false }) {
-                                Text("Отмена")
-                            }
-                        }
+                        dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text(stringResource(R.string.cancel)) } }
                     ) {
                         CompositionLocalProvider(
-                            LocalContext provides russianContext,
-                            LocalConfiguration provides russianConfiguration
+                            LocalContext provides localizedContext,
+                            LocalConfiguration provides localizedConfiguration
                         ) {
                             DatePicker(state = datePickerState)
                         }
@@ -246,27 +256,38 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltView
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { viewModel.selectNextDay() }) {
-                        Icon(Icons.Default.ArrowForward, contentDescription = "Следующий день")
+                        Icon(Icons.Default.ArrowForward, contentDescription = stringResource(R.string.next_day))
                     }
                     IconButton(onClick = {
                         coroutineScope.launch {
                             val exportText = runCatching {
                                 viewModel.exportDailyPlan(selectedLocalDate)
                             }.onFailure {
-                                Toast.makeText(context, "Не удалось подготовить файл", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.file_save_error), Toast.LENGTH_SHORT).show()
                             }.getOrNull() ?: return@launch
                             pendingDailyPlanExport = exportText
                             val fileName = "plan_${selectedLocalDate.format(fileDateFormatter)}.txt"
                             dailyPlanExportLauncher.launch(fileName)
                         }
                     }) {
-                        Icon(Icons.Default.FileDownload, contentDescription = "Экспортировать план")
+                        Icon(Icons.Default.FileDownload, contentDescription = stringResource(R.string.export_daily_plan))
                     }
                 }
             }
 
             if (showCalendar) {
-                val dayNames = listOf("Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс")
+                val currentLocale = remember(context) { 
+                    val appLocales = AppCompatDelegate.getApplicationLocales()
+                    if (!appLocales.isEmpty) appLocales.get(0) ?: Locale.getDefault() else Locale.getDefault()
+                }
+                
+                val dayNames = remember(currentLocale) {
+                    val days = java.time.DayOfWeek.values()
+                    // Shift to start with Monday if needed, but DayOfWeek already starts with Monday (ordinal 0)
+                    days.map { day ->
+                        day.getDisplayName(TextStyle.SHORT, currentLocale)
+                    }
+                }
 
                 Row(
                     modifier = Modifier
@@ -276,7 +297,7 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltView
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     dayNames.forEachIndexed { index, label ->
-                        val isWeekend = index >= 5
+                        val isWeekend = index >= 5 // DayOfWeek.SATURDAY (5) and SUNDAY (6)
                         Text(
                             text = label,
                             style = MaterialTheme.typography.bodySmall,
@@ -307,16 +328,20 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltView
                         showCalendar = false
                     },
                     headerContent = { monthName, year ->
-                        val locale = Locale("ru")
+                        val currentLocale = remember(context) { 
+                            val appLocales = AppCompatDelegate.getApplicationLocales()
+                            if (!appLocales.isEmpty) appLocales.get(0) ?: Locale.getDefault() else Locale.getDefault()
+                        }
+                        
                         val monthKey = when (monthName) {
                             is Enum<*> -> monthName.name
                             else -> monthName.toString()
                         }
                         val parsedMonth = runCatching {
-                            Month.valueOf(monthKey.uppercase(Locale.ROOT))
+                            java.time.Month.valueOf(monthKey.uppercase(Locale.ROOT))
                         }.getOrNull()
-                        val displayMonth = parsedMonth?.getDisplayName(TextStyle.FULL, locale)
-                            ?.replaceFirstChar { ch -> if (ch.isLowerCase()) ch.titlecase(locale) else ch.toString() }
+                        val displayMonth = parsedMonth?.getDisplayName(TextStyle.FULL, currentLocale)
+                            ?.replaceFirstChar { ch -> if (ch.isLowerCase()) ch.titlecase(currentLocale) else ch.toString() }
                             ?: monthKey
                         Text(
                             text = "$displayMonth $year",
@@ -342,14 +367,14 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltView
             ) {
                  if (overdueTasks.isNotEmpty()) {
                     Text(
-                        text = "Просроченные задачи: ${overdueTasks.size}",
+                        text = stringResource(R.string.overdue_count, overdueTasks.size),
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.clickable { navController.navigate(Screen.OverdueTasks.route) }
                     )
                 }
                 if (notes.isNotEmpty()) {
                     Text(
-                        text = "Заметки на сегодня: ${notes.size}",
+                        text = stringResource(R.string.today_notes_count, notes.size),
                         color = MaterialTheme.colorScheme.secondary,
                         modifier = Modifier.clickable {
                             navController.navigate(Screen.Notes.createRoute(selectedLocalDate.toString()))
@@ -400,28 +425,28 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltView
                 viewModel.dismissRecurringActionDialog()
             },
             title = {
-                Text(if (isDelete) "Удаление повторяющейся задачи" else "Отмена повторяющейся задачи")
+                Text(if (isDelete) stringResource(R.string.recurring_action_delete_title) else stringResource(R.string.recurring_action_cancel_title))
             },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Выберите, к каким задачам применить действие")
+                    Text(stringResource(R.string.recurring_action_message))
                     TextButton(onClick = {
                         showRecurringActionDialog = false
                         viewModel.onRecurringActionScopeSelected(RecurrenceScope.THIS)
                     }) {
-                        Text("Только к этой задаче")
+                        Text(stringResource(R.string.recurring_action_this))
                     }
                     TextButton(onClick = {
                         showRecurringActionDialog = false
                         viewModel.onRecurringActionScopeSelected(RecurrenceScope.THIS_AND_FUTURE)
                     }) {
-                        Text("К этой и будущим задачам")
+                        Text(stringResource(R.string.recurring_action_future))
                     }
                     TextButton(onClick = {
                         showRecurringActionDialog = false
                         viewModel.onRecurringActionScopeSelected(RecurrenceScope.ENTIRE_SERIES)
                     }) {
-                        Text("Ко всей серии")
+                        Text(stringResource(R.string.recurring_action_series))
                     }
                 }
             },
@@ -431,7 +456,7 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltView
                     showRecurringActionDialog = false
                     viewModel.dismissRecurringActionDialog()
                 }) {
-                    Text("Отмена")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -652,7 +677,7 @@ private fun HourSlotBox(
     ) {
             Icon(
                 imageVector = Icons.Default.Add,
-                contentDescription = "Добавить задачу",
+                contentDescription = stringResource(R.string.add_task),
                 tint = MaterialTheme.colorScheme.primary
             )
         }

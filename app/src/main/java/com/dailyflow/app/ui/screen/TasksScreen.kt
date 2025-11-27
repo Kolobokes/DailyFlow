@@ -36,6 +36,8 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import android.content.res.Configuration
 import java.util.Locale
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
@@ -55,12 +57,17 @@ fun TasksScreen(
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
-    val russianContext = remember(context) {
+    val currentLocale = remember(context) { 
+        val appLocales = AppCompatDelegate.getApplicationLocales()
+        if (!appLocales.isEmpty) appLocales.get(0) ?: Locale.getDefault() else Locale.getDefault()
+    }
+    
+    val localizedContext = remember(context, currentLocale) {
         val config = Configuration(context.resources.configuration)
-        config.setLocale(Locale("ru"))
+        config.setLocale(currentLocale)
         context.createConfigurationContext(config)
     }
-    val russianConfiguration = remember(russianContext) { russianContext.resources.configuration }
+    val localizedConfiguration = remember(localizedContext) { localizedContext.resources.configuration }
 
     LaunchedEffect(Unit) {
         viewModel.recurringActionDialog.collectLatest { state ->
@@ -84,14 +91,14 @@ fun TasksScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Все задачи") },
+                title = { Text(stringResource(R.string.all_tasks)) },
                 actions = {
                     IconButton(onClick = { showDatePicker = true }) {
-                        Icon(Icons.Default.FilterList, contentDescription = "Фильтр по дате")
+                        Icon(Icons.Default.FilterList, contentDescription = stringResource(R.string.overdue_filter_tooltip))
                     }
                     if (filterDate != null) {
                         IconButton(onClick = { viewModel.setFilterDate(null) }) {
-                            Icon(Icons.Default.FilterListOff, contentDescription = "Сбросить фильтр")
+                            Icon(Icons.Default.FilterListOff, contentDescription = stringResource(R.string.overdue_filter_reset_tooltip))
                         }
                     }
                 }
@@ -121,8 +128,8 @@ fun TasksScreen(
                     dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text(stringResource(R.string.cancel)) } }
                 ) {
                     CompositionLocalProvider(
-                        LocalContext provides russianContext,
-                        LocalConfiguration provides russianConfiguration
+                        LocalContext provides localizedContext,
+                        LocalConfiguration provides localizedConfiguration
                     ) {
                         DatePicker(state = datePickerState)
                     }
@@ -144,7 +151,7 @@ fun TasksScreen(
 
             if (groupedTasks.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Нет задач для отображения")
+                    Text(stringResource(R.string.no_tasks))
                 }
             } else {
                 LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -155,7 +162,7 @@ fun TasksScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = date.format(DateTimeFormatter.ofPattern("dd MMMM yyyy")),
+                                    text = date.format(DateTimeFormatter.ofPattern("dd MMMM yyyy", currentLocale)),
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -185,27 +192,27 @@ fun TasksScreen(
                 showRecurringDialog = false
                 viewModel.dismissRecurringActionDialog()
             },
-            title = { Text(if (isDelete) "Действие с повторяющейся задачей" else "Отмена повторяющейся задачи") },
+            title = { Text(if (isDelete) stringResource(R.string.recurring_action_delete_title) else stringResource(R.string.recurring_action_cancel_title)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Выберите, к каким задачам применить действие")
+                    Text(stringResource(R.string.recurring_action_message))
                     TextButton(onClick = {
                         showRecurringDialog = false
                         viewModel.onRecurringActionScopeSelected(RecurrenceScope.THIS)
                     }) {
-                        Text("Только к этой задаче")
+                        Text(stringResource(R.string.recurring_action_this))
                     }
                     TextButton(onClick = {
                         showRecurringDialog = false
                         viewModel.onRecurringActionScopeSelected(RecurrenceScope.THIS_AND_FUTURE)
                     }) {
-                        Text("К этой и будущим задачам")
+                        Text(stringResource(R.string.recurring_action_future))
                     }
                     TextButton(onClick = {
                         showRecurringDialog = false
                         viewModel.onRecurringActionScopeSelected(RecurrenceScope.ENTIRE_SERIES)
                     }) {
-                        Text("Ко всей серии")
+                        Text(stringResource(R.string.recurring_action_series))
                     }
                 }
             },
@@ -215,7 +222,7 @@ fun TasksScreen(
                     showRecurringDialog = false
                     viewModel.dismissRecurringActionDialog()
                 }) {
-                    Text("Отмена")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )

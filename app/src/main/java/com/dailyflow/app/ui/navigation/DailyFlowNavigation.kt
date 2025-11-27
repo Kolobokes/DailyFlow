@@ -37,7 +37,10 @@ data class BottomNavItem(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DailyFlowNavigation(initialTaskId: String? = null, activity: androidx.activity.ComponentActivity? = null) {
+fun DailyFlowNavigation(
+    initialTaskId: String? = null, 
+    activity: androidx.activity.ComponentActivity? = null
+) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
@@ -139,6 +142,12 @@ fun DailyFlowNavigation(initialTaskId: String? = null, activity: androidx.activi
             }
             composable(Screen.OverdueTasks.route) {
                 OverdueTasksScreen(navController = navController)
+            }
+            composable(Screen.NotificationSettings.route) {
+                NotificationSettingsScreen(navController = navController)
+            }
+            composable(Screen.LanguageSelection.route) {
+                LanguageSelectionScreen(navController = navController)
             }
             composable(Screen.Analytics.route) {
                 AnalyticsScreen(navController = navController)

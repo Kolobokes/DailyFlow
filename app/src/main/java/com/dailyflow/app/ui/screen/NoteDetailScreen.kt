@@ -115,23 +115,23 @@ fun NoteDetailScreen(
                         context.contentResolver.query(it, null, null, null, null)?.use { cursor ->
                             val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
                             if (nameIndex >= 0 && cursor.moveToFirst()) {
-                                attachedFileDisplayName = cursor.getString(nameIndex) ?: "Файл"
+                                attachedFileDisplayName = cursor.getString(nameIndex) ?: context.getString(R.string.file_default_name)
                             } else {
-                                attachedFileDisplayName = "Файл"
+                                attachedFileDisplayName = context.getString(R.string.file_default_name)
                             }
                         } ?: run {
-                            attachedFileDisplayName = it.path?.substringAfterLast('/') ?: "Файл"
+                            attachedFileDisplayName = it.path?.substringAfterLast('/') ?: context.getString(R.string.file_default_name)
                         }
                     } catch (e: Exception) {
-                        attachedFileDisplayName = "Файл"
+                        attachedFileDisplayName = context.getString(R.string.file_default_name)
                     }
-                } else {
-                    Toast.makeText(context, "Не удалось сохранить файл", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, context.getString(R.string.file_save_error), Toast.LENGTH_SHORT).show()
+                        }
+                    }
                 }
             }
-        }
-    }
-    val exportNoteTimestampFormatter = remember { DateTimeFormatter.ofPattern("yyyyMMdd_HHmm") }
+            val exportNoteTimestampFormatter = remember { DateTimeFormatter.ofPattern("yyyyMMdd_HHmm") }
     var pendingNoteExport by remember { mutableStateOf<String?>(null) }
     val noteExportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("text/plain")
@@ -142,39 +142,39 @@ fun NoteDetailScreen(
                 context.contentResolver.openOutputStream(uri)?.use { stream ->
                     stream.write(text.toByteArray(StandardCharsets.UTF_8))
                 }
-            }.onSuccess {
-                Toast.makeText(context, "Заметка сохранена в файл", Toast.LENGTH_SHORT).show()
-            }.onFailure {
-                Toast.makeText(context, "Не удалось сохранить файл", Toast.LENGTH_SHORT).show()
-            }
-        }
-        pendingNoteExport = null
-    }
-
-    LaunchedEffect(uiState) {
-        val note = uiState.note
-        if (!uiState.isNewNote && note != null) {
-            title = note.title
-            content = note.content
-            selectedCategory = uiState.categories.find { it.id == note.categoryId }
-            dateTime = note.dateTime
-            isCompleted = note.isCompleted
-            attachedFileName = note.attachedFileUri
-            // Получаем отображаемое имя файла из сохраненного файла
-            if (note.attachedFileUri != null) {
-                val file = viewModel.getFile(note.attachedFileUri!!)
-                attachedFileDisplayName = file?.name?.let { fileName ->
-                    // Извлекаем оригинальное имя из формата: noteId_originalFileName
-                    val noteIdPrefix = "${note.id}_"
-                    if (fileName.startsWith(noteIdPrefix)) {
-                        fileName.removePrefix(noteIdPrefix)
-                    } else {
-                        fileName
+                            }.onSuccess {
+                                Toast.makeText(context, context.getString(R.string.note_saved_to_file), Toast.LENGTH_SHORT).show()
+                            }.onFailure {
+                                Toast.makeText(context, context.getString(R.string.file_save_error), Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                        pendingNoteExport = null
                     }
-                } ?: "Файл"
-            } else {
-                attachedFileDisplayName = null
-            }
+                
+                    LaunchedEffect(uiState) {
+                        val note = uiState.note
+                        if (!uiState.isNewNote && note != null) {
+                            title = note.title
+                            content = note.content
+                            selectedCategory = uiState.categories.find { it.id == note.categoryId }
+                            dateTime = note.dateTime
+                            isCompleted = note.isCompleted
+                            attachedFileName = note.attachedFileUri
+                            // Получаем отображаемое имя файла из сохраненного файла
+                            if (note.attachedFileUri != null) {
+                                val file = viewModel.getFile(note.attachedFileUri!!)
+                                attachedFileDisplayName = file?.name?.let { fileName ->
+                                    // Извлекаем оригинальное имя из формата: noteId_originalFileName
+                                    val noteIdPrefix = "${note.id}_"
+                                    if (fileName.startsWith(noteIdPrefix)) {
+                                        fileName.removePrefix(noteIdPrefix)
+                                    } else {
+                                        fileName
+                                    }
+                                } ?: context.getString(R.string.file_default_name)
+                            } else {
+                                attachedFileDisplayName = null
+                            }
             
             // Сохраняем начальные значения
             initialTitle = note.title
@@ -487,17 +487,17 @@ fun NoteDetailScreen(
                     ) {
                         Icon(Icons.Default.Add, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Добавить пункт")
-                    }
-                }
-            } else {
-                OutlinedTextField(
-                    value = content,
-                    onValueChange = { content = it },
-                    label = { Text("Содержание") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 200.dp)
+                                    Text(stringResource(R.string.add_item))
+                                }
+                            }
+                        } else {
+                            OutlinedTextField(
+                                value = content,
+                                onValueChange = { content = it },
+                                label = { Text(stringResource(R.string.note_content)) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 200.dp)
                         .onFocusChanged { focusState ->
                             if (focusState.isFocused) {
                                 coroutineScope.launch {

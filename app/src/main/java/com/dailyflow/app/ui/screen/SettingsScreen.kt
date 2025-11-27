@@ -10,9 +10,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.dailyflow.app.R
 import com.dailyflow.app.ui.navigation.Screen
 import com.dailyflow.app.ui.viewmodel.SettingsViewModel
 
@@ -23,8 +25,7 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val privacyAccepted by viewModel.privacyAccepted.collectAsState()
-    val analyticsEnabled by viewModel.analyticsEnabled.collectAsState()
-    val crashReportingEnabled by viewModel.crashReportingEnabled.collectAsState()
+    val currentLanguage by viewModel.currentLanguage.collectAsState()
     
     LazyColumn(
         modifier = Modifier
@@ -34,7 +35,7 @@ fun SettingsScreen(
     ) {
         item {
             Text(
-                text = "Настройки",
+                text = stringResource(R.string.nav_settings),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold
             )
@@ -49,7 +50,7 @@ fun SettingsScreen(
                     modifier = Modifier.padding(16.dp)
                 ) {
                     Text(
-                        text = "Конфиденциальность",
+                        text = stringResource(R.string.settings_privacy_title),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
                     )
@@ -61,13 +62,7 @@ fun SettingsScreen(
                             onAccept = { viewModel.acceptPrivacyPolicy() }
                         )
                     } else {
-                        PrivacySettingsCard(
-                            analyticsEnabled = analyticsEnabled,
-                            crashReportingEnabled = crashReportingEnabled,
-                            onAnalyticsToggle = { viewModel.setAnalyticsEnabled(it) },
-                            onCrashReportingToggle = { viewModel.setCrashReportingEnabled(it) },
-                            onResetData = { viewModel.resetAllData() }
-                        )
+                        Text(stringResource(R.string.settings_privacy_accepted), style = MaterialTheme.typography.bodyMedium)
                     }
                 }
             }
@@ -82,7 +77,7 @@ fun SettingsScreen(
                     modifier = Modifier.padding(16.dp)
                 ) {
                     Text(
-                        text = "Настройки приложения",
+                        text = stringResource(R.string.settings_app_settings_title),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
                     )
@@ -91,30 +86,23 @@ fun SettingsScreen(
                     
                     SettingItem(
                         icon = Icons.Default.Category,
-                        title = "Категории",
-                        subtitle = "Управление категориями",
+                        title = stringResource(R.string.settings_categories_title),
+                        subtitle = stringResource(R.string.settings_categories_subtitle),
                         onClick = { navController.navigate(Screen.CategoryManagement.route) }
                     )
 
                     SettingItem(
                         icon = Icons.Default.Notifications,
-                        title = "Уведомления",
-                        subtitle = "Управление напоминаниями",
-                        onClick = { /* TODO: Navigate to notification settings */ }
-                    )
-                    
-                    SettingItem(
-                        icon = Icons.Default.Backup,
-                        title = "Резервное копирование",
-                        subtitle = "Экспорт и импорт данных",
-                        onClick = { /* TODO: Navigate to backup settings */ }
+                        title = stringResource(R.string.settings_notifications_title),
+                        subtitle = stringResource(R.string.settings_notifications_subtitle),
+                        onClick = { navController.navigate(Screen.NotificationSettings.route) }
                     )
                     
                     SettingItem(
                         icon = Icons.Default.Language,
-                        title = "Язык",
-                        subtitle = "Русский",
-                        onClick = { /* TODO: Navigate to language settings */ }
+                        title = stringResource(R.string.settings_language),
+                        subtitle = if (currentLanguage == "ru") "Русский" else "English",
+                        onClick = { navController.navigate(Screen.LanguageSelection.route) }
                     )
                 }
             }
@@ -129,7 +117,7 @@ fun SettingsScreen(
                     modifier = Modifier.padding(16.dp)
                 ) {
                     Text(
-                        text = "О приложении",
+                        text = stringResource(R.string.settings_about_title),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
                     )
@@ -138,22 +126,22 @@ fun SettingsScreen(
                     
                     SettingItem(
                         icon = Icons.Default.Info,
-                        title = "Версия",
+                        title = stringResource(R.string.settings_version_title),
                         subtitle = "1.0.0",
                         onClick = { /* TODO: Show version info */ }
                     )
                     
                     SettingItem(
                         icon = Icons.Default.Help,
-                        title = "Помощь",
-                        subtitle = "FAQ и поддержка",
+                        title = stringResource(R.string.settings_help_title),
+                        subtitle = stringResource(R.string.settings_help_subtitle),
                         onClick = { /* TODO: Navigate to help */ }
                     )
                     
                     SettingItem(
                         icon = Icons.Default.PrivacyTip,
-                        title = "Политика конфиденциальности",
-                        subtitle = "Как мы защищаем ваши данные",
+                        title = stringResource(R.string.settings_privacy_policy_title),
+                        subtitle = stringResource(R.string.settings_privacy_policy_subtitle),
                         onClick = { /* TODO: Open privacy policy */ }
                     )
                 }
@@ -176,7 +164,7 @@ fun PrivacyConsentCard(
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
-                text = "Согласие на обработку данных",
+                text = stringResource(R.string.settings_consent_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
@@ -184,7 +172,7 @@ fun PrivacyConsentCard(
             Spacer(modifier = Modifier.height(8.dp))
             
             Text(
-                text = "Для работы приложения необходимо ваше согласие на обработку персональных данных. Все данные хранятся локально на вашем устройстве и не передаются третьим лицам.",
+                text = stringResource(R.string.settings_consent_message),
                 style = MaterialTheme.typography.bodyMedium
             )
             
@@ -194,46 +182,8 @@ fun PrivacyConsentCard(
                 onClick = onAccept,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Принять и продолжить")
+                Text(stringResource(R.string.settings_consent_accept))
             }
-        }
-    }
-}
-
-@Composable
-fun PrivacySettingsCard(
-    analyticsEnabled: Boolean,
-    crashReportingEnabled: Boolean,
-    onAnalyticsToggle: (Boolean) -> Unit,
-    onCrashReportingToggle: (Boolean) -> Unit,
-    onResetData: () -> Unit
-) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        SwitchItem(
-            title = "Аналитика",
-            subtitle = "Помочь улучшить приложение",
-            checked = analyticsEnabled,
-            onCheckedChange = onAnalyticsToggle
-        )
-        
-        SwitchItem(
-            title = "Отчеты об ошибках",
-            subtitle = "Автоматически отправлять отчеты",
-            checked = crashReportingEnabled,
-            onCheckedChange = onCrashReportingToggle
-        )
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        OutlinedButton(
-            onClick = onResetData,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Icon(Icons.Default.DeleteForever, contentDescription = null, modifier = Modifier.size(16.dp))
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Удалить все данные")
         }
     }
 }
@@ -277,36 +227,6 @@ fun SettingItem(
             Icons.Default.ChevronRight,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-        )
-    }
-}
-
-@Composable
-fun SwitchItem(
-    title: String,
-    subtitle: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyLarge
-            )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-            )
-        }
-        
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange
         )
     }
 }

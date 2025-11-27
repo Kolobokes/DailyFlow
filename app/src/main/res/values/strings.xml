@@ -1,118 +1,300 @@
 <resources>
     <string name="app_name">DayScript</string>
-    
-    <!-- Navigation -->
-    <string name="nav_home">День</string>
-    <string name="nav_tasks">Задачи</string>
-    <string name="nav_notes">Заметки</string>
-    <string name="nav_statistics">Отчёты</string>
-    <!-- Analytics -->
-    <string name="analytics_title">Отчёты</string>
-    <string name="analytics_period_label">Период</string>
-    <string name="analytics_period_today">Сегодня</string>
-    <string name="analytics_period_week">7 дней</string>
-    <string name="analytics_period_month">30 дней</string>
-    <string name="analytics_period_quarter">90 дней</string>
-    <string name="analytics_period_year">365 дней</string>
-    <string name="analytics_period_custom">Выбрать период</string>
-    <string name="analytics_start_date">Начало</string>
-    <string name="analytics_end_date">Конец</string>
-    <string name="analytics_selected_period">Выбранный период: %1$s — %2$s</string>
-    <string name="analytics_category_report_title">Распределение задач по категориям</string>
-    <string name="analytics_total_tasks">Всего задач: %d</string>
-    <string name="analytics_overdue_report_title">Просроченные задачи</string>
-    <string name="analytics_overdue_total">Всего просроченных: %d</string>
-    <string name="analytics_no_data">Нет данных за выбранный период</string>
-    <string name="analytics_view_all_overdue">Все просроченные</string>
-    <string name="analytics_overdue_no_due">без срока</string>
-    <string name="analytics_completion_title">Выполнение задач</string>
-    <string name="analytics_completion_no_tasks">На выбранный период задач нет</string>
-    <string name="analytics_completion_for_period">Данные за %s</string>
-    <string name="analytics_completion_planned">Запланировано: %d</string>
-    <string name="analytics_completion_completed">Выполнено: %d</string>
-    <string name="analytics_completion_percentage">Завершено: %d%%</string>
-    <string name="analytics_workload_title">Нагрузка по времени</string>
-    <string name="analytics_workload_hint">Сколько задач запланировано на каждый час и день недели.</string>
-    <string name="analytics_workload_legend_low">Мало</string>
-    <string name="analytics_workload_legend_high">Много</string>
-    <string name="analytics_item_count">Кол-во: %d</string>
-    <string name="analytics_uncategorized">Без категории</string>
-    <string name="nav_settings">Настройки</string>
-    
-    <!-- Common -->
-    <string name="ok">ОК</string>
-    <string name="add">Добавить</string>
-    <string name="save">Сохранить</string>
-    <string name="cancel">Отмена</string>
-    <string name="delete">Удалить</string>
-    <string name="edit">Редактировать</string>
-    <string name="done">Готово</string>
-    <string name="search">Поиск</string>
-    <string name="back">Назад</string>
-    
-    <!-- Tasks -->
-    <string name="task_title">Название задачи</string>
-    <string name="task_description">Описание</string>
-    <string name="task_category">Категория</string>
-    <string name="task_priority">Приоритет</string>
-    <string name="task_date_time">Дата и время</string>
-    <string name="task_reminder">Напоминание</string>
-    
-    <!-- Priority -->
-    <string name="priority_low">Низкий</string>
-    <string name="priority_medium">Средний</string>
-    <string name="priority_high">Высокий</string>
-    
-    <!-- Status -->
-    <string name="status_pending">В ожидании</string>
-    <string name="status_completed">Выполнено</string>
-    <string name="status_cancelled">Отменено</string>
-    
-    <!-- Notes -->
-    <string name="note_title">Заголовок заметки</string>
-    <string name="note_content">Содержимое</string>
-    <string name="new_note">Новая заметка</string>
-    <string name="edit_note">Редактировать заметку</string>
-    <string name="select_date">Выбрать дату</string>
-    <string name="unsaved_changes_title">Несохраненные изменения</string>
-    <string name="unsaved_changes_message">У вас есть несохраненные изменения. Что вы хотите сделать?</string>
-    <string name="discard_changes">Не сохранять</string>
-    
-    <!-- Categories -->
-    <string name="category_name">Название категории</string>
-    <string name="category_color">Цвет</string>
-    <string name="category_icon">Иконка</string>
-    
-    <!-- Overdue -->
-    <string name="overdue_tasks">Просроченные дела</string>
-    <string name="overdue_count">Просроченных дел: %d</string>
-    
-    <!-- Progress -->
-    <string name="daily_progress">Прогресс дня</string>
-    <string name="progress_percentage">%d%%</string>
-    
-    <!-- Voice -->
-    <string name="voice_input">Голосовой ввод</string>
-    <string name="voice_input_error">Ошибка голосового ввода</string>
-    
-    <!-- Export -->
-    <string name="export_data">Экспорт данных</string>
-    <string name="export_format">Формат экспорта</string>
-    
-    <!-- Permissions -->
-    <string name="permission_microphone">Разрешение на использование микрофона</string>
-    <string name="permission_notifications">Разрешение на уведомления</string>
-    <string name="permission_storage">Разрешение на доступ к хранилищу</string>
-    
-    <!-- Settings -->
-    <string name="settings_theme">Тема</string>
-    <string name="settings_notifications">Уведомления</string>
-    <string name="settings_backup">Резервное копирование</string>
-    <string name="settings_privacy">Конфиденциальность</string>
 
-    <!-- Filters -->
-    <string name="filter_all">Все</string>
-    <string name="filter_overdue">Просроченные</string>
-    <string name="filter_completed">Выполненные</string>
-    <string name="filter_cancelled">Отмененные</string>
+    <!-- Navigation -->
+    <string name="nav_home">Day</string>
+    <string name="nav_tasks">Tasks</string>
+    <string name="nav_notes">Notes</string>
+    <string name="nav_statistics">Reports</string>
+    <!-- Analytics -->
+    <string name="analytics_title">Reports</string>
+    <string name="analytics_period_label">Period</string>
+    <string name="analytics_period_today">Today</string>
+    <string name="analytics_period_week">7 days</string>
+    <string name="analytics_period_month">30 days</string>
+    <string name="analytics_period_quarter">90 days</string>
+    <string name="analytics_period_year">365 days</string>
+    <string name="analytics_period_custom">Select period</string>
+    <string name="analytics_start_date">Start</string>
+    <string name="analytics_end_date">End</string>
+    <string name="analytics_selected_period">Selected period: %1$s — %2$s</string>
+    <string name="analytics_category_report_title">Task distribution by categories</string>
+    <string name="analytics_total_tasks">Total tasks: %d</string>
+    <string name="analytics_overdue_report_title">Overdue tasks</string>
+    <string name="analytics_overdue_total">Total overdue: %d</string>
+    <string name="analytics_no_data">No data for the selected period</string>
+    <string name="analytics_view_all_overdue">All overdue</string>
+    <string name="analytics_overdue_no_due">no due date</string>
+    <string name="analytics_completion_title">Task completion</string>
+    <string name="analytics_completion_no_tasks">No tasks for the selected period</string>
+    <string name="analytics_completion_for_period">Data for %s</string>
+    <string name="analytics_completion_planned">Planned: %d</string>
+    <string name="analytics_completion_completed">Completed: %d</string>
+    <string name="analytics_completion_percentage">Completed: %d%%</string>
+    <string name="analytics_workload_title">Workload by time</string>
+    <string name="analytics_workload_hint">How many tasks are scheduled for each hour and day of the week.</string>
+    <string name="analytics_workload_legend_low">Low</string>
+    <string name="analytics_workload_legend_high">High</string>
+    <string name="analytics_item_count">Count: %d</string>
+    <string name="analytics_uncategorized">Uncategorized</string>
+    <string name="nav_settings">Settings</string>
+    <string name="settings_categories">Categories</string>
+    <string name="settings_categories_subtitle">Manage categories</string>
+    <string name="settings_notifications_subtitle">Manage reminders</string>
+    <string name="settings_version">Version</string>
+    <string name="settings_help">Help</string>
+    <string name="settings_help_subtitle">FAQ and support</string>
+    <string name="settings_privacy_policy">Privacy Policy</string>
+    <string name="settings_privacy_policy_subtitle">How we protect your data</string>
+    <string name="privacy_consent_title">Data Processing Consent</string>
+    <string name="privacy_consent_message">For the application to work, your consent to the processing of personal data is required. All data is stored locally on your device and is not transferred to third parties.</string>
+    <string name="privacy_accept_button">Accept and continue</string>
+    <string name="privacy_accepted_message">You have accepted the data processing terms.</string>
+
+    <!-- Common -->
+    <string name="ok">OK</string>
+    <string name="add">Add</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="delete">Delete</string>
+    <string name="edit">Edit</string>
+    <string name="done">Done</string>
+    <string name="search">Search</string>
+    <string name="back">Back</string>
+
+    <!-- Tasks -->
+    <string name="task_title">Task title</string>
+    <string name="task_description">Description</string>
+    <string name="task_category">Category</string>
+    <string name="task_priority">Priority</string>
+    <string name="task_date_time">Date and time</string>
+    <string name="task_reminder">Reminder</string>
+    <string name="task_name">Title</string>
+    <string name="task_start">Start</string>
+    <string name="task_end">End</string>
+    <string name="task_remind">Remind</string>
+    <string name="task_before_minutes">Before (min)</string>
+    <string name="task_repeat">Repeat</string>
+    <string name="task_recurrence_params">Recurrence parameters</string>
+    <string name="task_interval">Interval</string>
+    <string name="task_times">time(s)</string>
+    <string name="task_frequency">Frequency</string>
+    <string name="task_frequency_daily">Daily</string>
+    <string name="task_frequency_weekly">Weekly</string>
+    <string name="task_frequency_weekly_days">By days of week</string>
+    <string name="task_frequency_monthly">Monthly</string>
+    <string name="task_days_of_week">Days of week</string>
+    <string name="task_day_of_month">Day of month</string>
+    <string name="task_repeat_ends">Repeat ends</string>
+    <string name="task_repeat_never">Never</string>
+    <string name="task_repeat_after_date">After date</string>
+    <string name="task_repeat_after_count">After number of occurrences</string>
+    <string name="task_repeat_count">Number of occurrences</string>
+    <string name="task_preview_occurrences">Will create %d tasks</string>
+    <string name="task_select_time">Select time</string>
+    <string name="task_open_file">Open file</string>
+    <string name="task_file_not_found">File not found</string>
+    <string name="task_file_open_error">Failed to open file: %s</string>
+    <string name="task_delete_file">Delete file</string>
+    <string name="task_attach_file">Attach file</string>
+    <string name="task_attached_file">Attached file</string>
+    <string name="task_click_to_open">Click to open</string>
+    <string name="task_status_completed">Completed</string>
+    <string name="task_status_cancelled">Cancelled</string>
+    <string name="task_status_pending">Not completed</string>
+    <string name="task_export_failed">Failed to prepare file</string>
+    <string name="task_saved_to_file">Task saved to file</string>
+    <string name="task_delete_recurring_title">Delete recurring task</string>
+    <string name="task_cancel_recurring_title">Cancel recurring task</string>
+    <string name="task_recurring_action_message">Choose which tasks to apply the action to</string>
+    <string name="task_recurring_action_this">Only this task</string>
+    <string name="task_recurring_action_future">This and future tasks</string>
+    <string name="task_recurring_action_series">Entire series</string>
+    <string name="task_recurring_action_hint">To apply to future tasks, enable recurrence and set up the rule.</string>
+    <string name="all_tasks">All tasks</string>
+    <string name="overdue_filter_tooltip">Filter by date</string>
+    <string name="overdue_filter_reset_tooltip">Reset filter</string>
+    <string name="filter_all">All</string>
+    <string name="filter_overdue">Overdue</string>
+    <string name="filter_completed">Completed</string>
+    <string name="filter_cancelled">Cancelled</string>
+    <string name="no_tasks">No tasks to display</string>
+
+
+    <!-- Priority -->
+    <string name="priority_low">Low</string>
+    <string name="priority_medium">Medium</string>
+    <string name="priority_high">High</string>
+
+    <!-- Status -->
+    <string name="status_pending">Pending</string>
+    <string name="status_completed">Completed</string>
+    <string name="status_cancelled">Cancelled</string>
+
+    <!-- Notes -->
+    <string name="note_title">Note title</string>
+    <string name="note_content">Content</string>
+    <string name="new_note">New note</string>
+    <string name="edit_note">Edit note</string>
+    <string name="select_date">Select date</string>
+    <string name="unsaved_changes_title">Unsaved changes</string>
+    <string name="unsaved_changes_message">You have unsaved changes. What do you want to do?</string>
+    <string name="discard_changes">Discard changes</string>
+    <string name="add_item">Add item</string>
+    <string name="checklist">Checklist</string>
+    <string name="file_default_name">File</string>
+    <string name="file_save_error">Failed to save file</string>
+    <string name="note_saved_to_file">Note saved to file</string>
+    <string name="note_export_failed">Failed to prepare file</string>
+    <string name="note_delete_file">Delete file</string>
+    <string name="note_attach_file">Attach file</string>
+    <string name="note_attached_file">Attached file</string>
+    <string name="note_click_to_open">Click to open</string>
+    <string name="note_open_file">Open file</string>
+    <string name="note_file_not_found">File not found</string>
+    <string name="note_file_open_error">Failed to open file: %s</string>
+    <string name="show_completed_notes">Show completed</string>
+    <string name="all_notes_filter">All</string>
+    <string name="create_note">Create note</string>
+
+
+    <!-- Categories -->
+    <string name="category_name">Category name</string>
+    <string name="category_color">Color</string>
+    <string name="category_icon">Icon</string>
+    <string name="category_management_title">Category Management</string>
+    <string name="add_category">Add category</string>
+    <string name="show_archived_categories">Show archived</string>
+    <string name="filter_categories_all">All</string>
+    <string name="filter_categories_tasks">For tasks</string>
+    <string name="filter_categories_notes">For notes</string>
+    <string name="new_category">New category</string>
+    <string name="edit_category">Edit category</string>
+    <string name="archive_category">Archive</string>
+    <string name="unarchive_category">Restore</string>
+    <string name="category_for_tasks">For tasks</string>
+    <string name="category_for_notes">For notes</string>
+
+    <!-- Overdue -->
+    <string name="overdue_tasks">Overdue tasks</string>
+    <string name="overdue_count">Overdue tasks: %d</string>
+    <string name="overdue_action_delete_title">Delete recurring task</string>
+    <string name="overdue_action_cancel_title">Cancel recurring task</string>
+    <string name="overdue_action_message">Choose which tasks to apply the action to</string>
+    <string name="overdue_action_this">Only this task</string>
+    <string name="overdue_action_future">This and future tasks</string>
+    <string name="overdue_action_series">Entire series</string>
+
+
+    <!-- Progress -->
+    <string name="daily_progress">Daily progress</string>
+    <string name="progress_percentage">%d%%</string>
+
+    <!-- Voice -->
+    <string name="voice_input">Voice input</string>
+    <string name="voice_input_error">Voice input error</string>
+
+    <!-- Export -->
+    <string name="export_data">Export data</string>
+    <string name="export_format">Export format</string>
+
+    <!-- Permissions -->
+    <string name="permission_microphone">Microphone permission</string>
+    <string name="permission_notifications">Notifications permission</string>
+    <string name="permission_storage">Storage permission</string>
+
+    <!-- Settings -->
+    <string name="settings_theme">Theme</string>
+    <string name="settings_notifications">Notifications</string>
+    <string name="settings_backup">Backup</string>
+    <string name="settings_privacy">Privacy</string>
+    <string name="settings_app_settings">App Settings</string>
+    <string name="settings_about">About</string>
+    <string name="settings_language">Language</string>
+    <string name="language_russian">Русский</string>
+    <string name="language_english">English</string>
+
+    <!-- Home Screen -->
+    <string name="previous_day">Previous day</string>
+    <string name="next_day">Next day</string>
+    <string name="collapse_calendar">Collapse calendar</string>
+    <string name="expand_calendar">Expand calendar</string>
+    <string name="daily_plan_saved">Daily plan saved</string>
+    <string name="export_daily_plan">Export daily plan</string>
+    <string name="today_notes_count">Notes for today: %d</string>
+    <string name="add_task">Add task</string>
+    
+    <!-- Task Detail -->
+    <string name="new_task">New task</string>
+    <string name="edit_task">Edit task</string>
+    <string name="day_number">Day number</string>
+    <string name="how_to_apply_changes">How to apply changes?</string>
+    <string name="permission_required_title">Permission required</string>
+    <string name="permission_exact_alarm_message">To reliably remind you, the application requires special permission to set exact alarms.</string>
+    <string name="go_to_settings">Go to settings</string>
+    
+    <!-- Aliases for compatibility -->
+    <string name="recurring_action_delete_title">Delete recurring task</string>
+    <string name="recurring_action_cancel_title">Cancel recurring task</string>
+    <string name="recurring_action_message">Choose which tasks to apply the action to</string>
+    <string name="recurring_action_this">Only this task</string>
+    <string name="recurring_action_future">This and future tasks</string>
+    <string name="recurring_action_series">Entire series</string>
+    <string name="show_completed">Show completed</string>
+    <string name="overdue_delete_recurring_title">Delete recurring task</string>
+    <string name="overdue_cancel_recurring_title">Cancel recurring task</string>
+    <string name="overdue_apply_changes_title">Choose which tasks to apply the action to</string>
+    <string name="overdue_apply_this">Only this task</string>
+    <string name="overdue_apply_future">This and future tasks</string>
+    <string name="overdue_apply_series">Entire series</string>
+    <string name="settings_privacy_title">Privacy</string>
+    <string name="settings_privacy_accepted">You have accepted the data processing terms.</string>
+    <string name="settings_app_settings_title">App Settings</string>
+    <string name="settings_categories_title">Categories</string>
+    <string name="settings_notifications_title">Notifications</string>
+    <string name="settings_about_title">About</string>
+    <string name="settings_version_title">Version</string>
+    <string name="settings_help_title">Help</string>
+    <string name="settings_privacy_policy_title">Privacy Policy</string>
+    <string name="settings_consent_title">Data Processing Consent</string>
+    <string name="settings_consent_message">For the application to work, your consent to the processing of personal data is required. All data is stored locally on your device and is not transferred to third parties.</string>
+    <string name="settings_consent_accept">Accept and continue</string>
+    <string name="task_detail_title_new">New task</string>
+    <string name="task_detail_title_edit">Edit task</string>
+    <string name="task_detail_status_completed">Completed</string>
+    <string name="task_detail_status_cancelled">Cancelled</string>
+    <string name="task_detail_status_pending">Pending</string>
+    <string name="task_detail_label_name">Title</string>
+    <string name="task_detail_label_description">Description</string>
+    <string name="task_detail_label_start">Start</string>
+    <string name="task_detail_label_end">End</string>
+    <string name="task_detail_label_reminder">Reminder</string>
+    <string name="task_detail_label_reminder_minutes">Before (min)</string>
+    <string name="task_detail_label_repeat">Repeat</string>
+    <string name="task_detail_time_select">Select time</string>
+    <string name="task_detail_apply_changes_title">How to apply changes?</string>
+    <string name="task_detail_apply_this">Only this task</string>
+    <string name="task_detail_apply_future">This and future tasks</string>
+    <string name="task_detail_apply_series">Entire series</string>
+    <string name="task_detail_apply_future_hint">To apply to future tasks, enable recurrence and set up the rule.</string>
+    <string name="task_detail_permission_title">Permission required</string>
+    <string name="task_detail_permission_message">To reliably remind you, the application requires special permission to set exact alarms.</string>
+    <string name="task_detail_permission_settings">Go to settings</string>
+    <string name="task_detail_export_task">Export task</string>
+    <string name="task_detail_recurrence_params">Recurrence parameters</string>
+    <string name="task_detail_recurrence_interval">Interval</string>
+    <string name="task_detail_label_interval_unit">time(s)</string>
+    <string name="task_detail_recurrence_preview">Will create %d tasks</string>
+    <string name="task_detail_frequency_daily">Daily</string>
+    <string name="task_detail_frequency_weekly">Weekly</string>
+    <string name="task_detail_frequency_weekly_days">By days of week</string>
+    <string name="task_detail_frequency_monthly">Monthly</string>
+    <string name="task_detail_label_frequency">Frequency</string>
+    <string name="task_detail_recurrence_day_of_month">Day of month</string>
+    <string name="task_detail_recurrence_day">Day number</string>
+    <string name="task_detail_recurrence_ends">Repeat ends</string>
+    <string name="task_detail_recurrence_never">Never</string>
+    <string name="task_detail_recurrence_end_date">After date</string>
+    <string name="task_detail_recurrence_count">After number of occurrences</string>
+    <string name="task_detail_recurrence_count_label">Number of occurrences</string>
 </resources>

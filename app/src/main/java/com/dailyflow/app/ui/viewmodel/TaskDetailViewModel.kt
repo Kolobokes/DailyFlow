@@ -16,6 +16,7 @@ import com.dailyflow.app.data.repository.RecurringUpdateRequest
 import com.dailyflow.app.notifications.ReminderScheduler
 import com.dailyflow.app.export.TextExportManager
 import com.dailyflow.app.util.FileStorageManager
+import com.dailyflow.app.security.SettingsManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -42,6 +43,7 @@ data class TaskDetailUiState(
     val defaultDate: LocalDate? = null,
     val defaultStartTime: LocalTime? = null,
     val defaultEndTime: LocalTime? = null,
+    val defaultReminderMinutes: Int = 60,
     val isRecurring: Boolean = false,
     val recurrenceRule: RecurrenceRule? = null,
     val createdOccurrences: Int = 0
@@ -55,6 +57,7 @@ class TaskDetailViewModel @Inject constructor(
     private val reminderScheduler: ReminderScheduler,
     private val exportManager: TextExportManager,
     private val fileStorageManager: FileStorageManager,
+    private val settingsManager: SettingsManager,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -95,13 +98,15 @@ class TaskDetailViewModel @Inject constructor(
                 val defaultDate = selectedDate?.let { LocalDate.parse(it) }
                 val defaultStartTime = startTime?.let { LocalTime.parse(it) }
                 val defaultEndTime = endTime?.let { LocalTime.parse(it) }
+                val defaultReminderMinutes = settingsManager.defaultReminderMinutes.first()
                 _uiState.value = TaskDetailUiState(
                     categories = categories, 
                     isNewTask = true, 
                     isLoading = false, 
                     defaultDate = defaultDate,
                     defaultStartTime = defaultStartTime,
-                    defaultEndTime = defaultEndTime
+                    defaultEndTime = defaultEndTime,
+                    defaultReminderMinutes = defaultReminderMinutes
                 )
             }
         }

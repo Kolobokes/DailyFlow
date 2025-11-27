@@ -41,4 +41,6 @@ sealed class Screen(val route: String) {
     }
     object CategoryManagement : Screen("category_management")
     object OverdueTasks : Screen("overdue_tasks")
+    object NotificationSettings : Screen("notification_settings")
+    object LanguageSelection : Screen("language_selection")
 }

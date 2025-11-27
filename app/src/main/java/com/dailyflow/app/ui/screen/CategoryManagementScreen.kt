@@ -24,6 +24,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.dailyflow.app.data.model.Category
 import com.dailyflow.app.ui.viewmodel.CategoryManagementViewModel
+import androidx.compose.ui.res.stringResource
+import com.dailyflow.app.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,10 +39,10 @@ fun CategoryManagementScreen(navController: NavController, viewModel: CategoryMa
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Управление категориями") },
+                title = { Text(stringResource(R.string.category_management_title)) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
             )
@@ -50,7 +52,7 @@ fun CategoryManagementScreen(navController: NavController, viewModel: CategoryMa
                 categoryToEdit = null
                 showDialog = true 
             }) {
-                Icon(Icons.Default.Add, contentDescription = "Добавить категорию")
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_category))
             }
         }
     ) {
@@ -58,12 +60,12 @@ fun CategoryManagementScreen(navController: NavController, viewModel: CategoryMa
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Switch(checked = showArchived, onCheckedChange = { viewModel.toggleShowArchived(it) })
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Показывать архивные")
+                Text(stringResource(R.string.show_archived_categories))
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(selected = filterType == CategoryFilterType.ALL, onClick = { viewModel.setFilterType(CategoryFilterType.ALL) }, label = { Text("Все") })
-                FilterChip(selected = filterType == CategoryFilterType.FOR_TASKS, onClick = { viewModel.setFilterType(CategoryFilterType.FOR_TASKS) }, label = { Text("Для задач") })
-                FilterChip(selected = filterType == CategoryFilterType.FOR_NOTES, onClick = { viewModel.setFilterType(CategoryFilterType.FOR_NOTES) }, label = { Text("Для заметок") })
+                FilterChip(selected = filterType == CategoryFilterType.ALL, onClick = { viewModel.setFilterType(CategoryFilterType.ALL) }, label = { Text(stringResource(R.string.filter_categories_all)) })
+                FilterChip(selected = filterType == CategoryFilterType.FOR_TASKS, onClick = { viewModel.setFilterType(CategoryFilterType.FOR_TASKS) }, label = { Text(stringResource(R.string.filter_categories_tasks)) })
+                FilterChip(selected = filterType == CategoryFilterType.FOR_NOTES, onClick = { viewModel.setFilterType(CategoryFilterType.FOR_NOTES) }, label = { Text(stringResource(R.string.filter_categories_notes)) })
             }
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -182,7 +184,7 @@ fun CategoryEditDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (category == null) "Новая категория" else "Редактировать категорию") },
+        title = { Text(if (category == null) stringResource(R.string.new_category) else stringResource(R.string.edit_category)) },
         text = {
             Column(
                 modifier = Modifier
@@ -193,11 +195,11 @@ fun CategoryEditDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Название") },
+                    label = { Text(stringResource(R.string.category_name)) },
                     modifier = Modifier.fillMaxWidth()
                 )
                 
-                Text("Цвет:")
+                Text(stringResource(R.string.category_color))
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -215,7 +217,7 @@ fun CategoryEditDialog(
                     }
                 }
 
-                Text("Иконка:")
+                Text(stringResource(R.string.category_icon))
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -239,7 +241,7 @@ fun CategoryEditDialog(
                 ) {
                     Checkbox(checked = forTasks, onCheckedChange = { forTasks = it })
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Для задач")
+                    Text(stringResource(R.string.category_for_tasks))
                 }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -247,29 +249,29 @@ fun CategoryEditDialog(
                 ) {
                     Checkbox(checked = forNotes, onCheckedChange = { forNotes = it })
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Для заметок")
+                    Text(stringResource(R.string.category_for_notes))
                 }
             }
         },
         confirmButton = {
             Button(onClick = { onSave(category?.id, name, selectedColor, selectedIcon, forTasks, forNotes) }) {
-                Text("Сохранить")
+                Text(stringResource(R.string.save))
             }
         },
         dismissButton = {
             Row {
                  if (category?.isArchived == true) {
                      TextButton(onClick = { onUnarchive(category.id) }) {
-                        Text("Восстановить")
+                        Text(stringResource(R.string.unarchive_category))
                     }
                  } else if (category != null) {
                     TextButton(onClick = { onArchive(category.id) }) {
-                        Text("Архивировать")
+                        Text(stringResource(R.string.archive_category))
                     }
                 }
                 Spacer(Modifier.weight(1f))
                 TextButton(onClick = onDismiss) {
-                    Text("Отмена")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         }
