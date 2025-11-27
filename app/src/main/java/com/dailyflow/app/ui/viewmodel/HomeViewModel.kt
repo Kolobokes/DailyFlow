@@ -32,6 +32,21 @@ class HomeViewModel @Inject constructor(
     private val _selectedDate = MutableStateFlow(LocalDateTime.now())
     val selectedDate: StateFlow<LocalDateTime> = _selectedDate.asStateFlow()
     
+    init {
+        // Обновляем выбранную дату при изменении текущего дня
+        viewModelScope.launch {
+            while (true) {
+                kotlinx.coroutines.delay(60000) // Проверяем каждую минуту
+                val now = LocalDateTime.now()
+                val currentSelected = _selectedDate.value
+                // Если выбран сегодняшний день, обновляем время
+                if (currentSelected.toLocalDate() == now.toLocalDate()) {
+                    _selectedDate.value = now
+                }
+            }
+        }
+    }
+    
     val allActiveTasks: StateFlow<List<Task>> = taskRepository.getAllActiveTasks()
         .stateIn(
             scope = viewModelScope,
@@ -64,6 +79,18 @@ class HomeViewModel @Inject constructor(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
+        )
+
+    val groupedOverdueTasks: StateFlow<Map<LocalDate, List<Task>>> = taskRepository.getOverdueTasks()
+        .map { tasks ->
+            tasks
+                .groupBy { it.endDateTime?.toLocalDate() ?: LocalDate.MIN } 
+                .toSortedMap(compareByDescending { it })
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyMap()
         )
     
     val categories: StateFlow<List<Category>> = categoryRepository.getAllCategories()

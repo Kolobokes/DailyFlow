@@ -31,6 +31,11 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.runtime.CompositionLocalProvider
+import android.content.res.Configuration
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -82,6 +87,14 @@ fun OverdueScreen(
                 .padding(horizontal = 16.dp)
         ) {
             if (showDatePicker) {
+                val context = LocalContext.current
+                val russianContext = remember(context) {
+                    val config = android.content.res.Configuration(context.resources.configuration)
+                    config.setLocale(java.util.Locale("ru"))
+                    context.createConfigurationContext(config)
+                }
+                val russianConfiguration = remember(russianContext) { russianContext.resources.configuration }
+                
                 DatePickerDialog(
                     onDismissRequest = { showDatePicker = false },
                     confirmButton = {
@@ -97,7 +110,12 @@ fun OverdueScreen(
                     },
                     dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("Отмена") } }
                 ) {
-                    DatePicker(state = datePickerState)
+                    CompositionLocalProvider(
+                        LocalContext provides russianContext,
+                        LocalConfiguration provides russianConfiguration
+                    ) {
+                        DatePicker(state = datePickerState)
+                    }
                 }
             }
 
@@ -111,19 +129,26 @@ fun OverdueScreen(
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     groupedTasks.forEach { (date, tasks) ->
-                        stickyHeader {
+                        stickyHeader(key = date.toString()) {
                             Row(
-                                modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant).padding(8.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = date.format(DateTimeFormatter.ofPattern("dd MMMM yyyy")),
+                                    text = date.format(DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale("ru"))),
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
                         }
-                        items(tasks) { task ->
+                        items(
+                            count = tasks.size,
+                            key = { index -> tasks[index].id }
+                        ) { index ->
+                            val task = tasks[index]
                             OverdueTaskItem(
                                 task = task,
                                 category = categories.find { cat -> cat.id == task.categoryId },

@@ -7,6 +7,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -60,6 +61,13 @@ fun NoteDetailScreen(
     var title by remember { mutableStateOf("") }
     var content by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf<Category?>(null) }
+    
+    // Инициализируем категорию при загрузке или при изменении списка категорий
+    LaunchedEffect(uiState.categories, viewModel.initialCategoryId) {
+        if (selectedCategory == null && viewModel.initialCategoryId != null && uiState.categories.isNotEmpty()) {
+            selectedCategory = uiState.categories.find { it.id == viewModel.initialCategoryId }
+        }
+    }
     var dateTime by remember { mutableStateOf<java.time.LocalDateTime?>(null) }
     var isCompleted by remember { mutableStateOf(false) }
     var categoryMenuExpanded by remember { mutableStateOf(false) }
@@ -446,19 +454,42 @@ fun NoteDetailScreen(
             }
 
             if (isChecklist) {
-                ChecklistEditor(
-                    items = checklistItems,
-                    onUpdateItem = { index, item -> checklistItems[index] = item },
-                    onRemoveItem = { index -> checklistItems.removeAt(index) },
-                    onAddItem = {
-                        checklistItems.add(ChecklistItem(UUID.randomUUID().toString(), "", false))
-                        coroutineScope.launch {
-                            // Прокрутить к концу после добавления нового пункта
-                            kotlinx.coroutines.delay(100)
-                            scrollState.animateScrollTo(scrollState.maxValue)
+                val listState = rememberLazyListState()
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    LazyColumn(
+                        state = listState,
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 400.dp)
+                    ) {
+                        itemsIndexed(checklistItems, key = { _, item -> item.id }) { index, item ->
+                            ChecklistItemRow(
+                                item = item,
+                                onCheckedChange = { checked -> checklistItems[index] = item.copy(isChecked = checked) },
+                                onTextChange = { text -> checklistItems[index] = item.copy(text = text) },
+                                onRemove = { checklistItems.removeAt(index) }
+                            )
                         }
                     }
-                )
+                    OutlinedButton(
+                        onClick = {
+                            val newIndex = checklistItems.size
+                            checklistItems.add(ChecklistItem(UUID.randomUUID().toString(), "", false))
+                            coroutineScope.launch {
+                                kotlinx.coroutines.delay(150)
+                                if (newIndex < listState.layoutInfo.totalItemsCount) {
+                                    listState.animateScrollToItem(newIndex)
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Добавить пункт")
+                    }
+                }
             } else {
                 OutlinedTextField(
                     value = content,
@@ -604,7 +635,7 @@ private fun ChecklistEditor(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(max = 400.dp)
+                .weight(1f, fill = false)
         ) {
             itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
                 ChecklistItemRow(

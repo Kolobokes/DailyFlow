@@ -15,10 +15,13 @@ sealed class Screen(val route: String) {
     }
     object Analytics : Screen("analytics")
     object Settings : Screen("settings")
-    object NoteDetail : Screen("note_detail?noteId={noteId}") {
-        val routeWithArgs = "note_detail?noteId={noteId}"
-        fun createRoute(noteId: String?): String {
-            return if (noteId != null) "note_detail?noteId=$noteId" else "note_detail"
+    object NoteDetail : Screen("note_detail?noteId={noteId}&categoryId={categoryId}") {
+        val routeWithArgs = "note_detail?noteId={noteId}&categoryId={categoryId}"
+        fun createRoute(noteId: String?, categoryId: String? = null): String {
+            val params = mutableListOf<String>()
+            noteId?.let { params.add("noteId=$it") }
+            categoryId?.let { params.add("categoryId=$it") }
+            return if (params.isNotEmpty()) "note_detail?${params.joinToString("&")}" else "note_detail"
         }
     }
     object TaskDetail : Screen("task_detail?taskId={taskId}&selectedDate={selectedDate}&startTime={startTime}&endTime={endTime}") {

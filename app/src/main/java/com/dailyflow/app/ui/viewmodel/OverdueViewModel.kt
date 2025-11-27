@@ -43,11 +43,20 @@ class OverdueViewModel @Inject constructor(
         filterDate
     ) { tasks, date ->
         val filteredTasks = if (date != null) {
-            tasks.filter { it.endDateTime?.toLocalDate() == date }
+            tasks.filter { 
+                val taskDate = it.endDateTime?.toLocalDate() ?: it.startDateTime?.toLocalDate() ?: it.createdAt.toLocalDate()
+                taskDate == date 
+            }
         } else {
             tasks
         }
-        filteredTasks.groupBy { it.endDateTime!!.toLocalDate() }.toSortedMap(compareByDescending { it })
+        // Группируем по дате окончания задачи (endDateTime) - приоритет endDateTime
+        filteredTasks.groupBy { task ->
+            // Используем endDateTime как основной ключ для группировки
+            task.endDateTime?.toLocalDate() 
+                ?: task.startDateTime?.toLocalDate() 
+                ?: task.createdAt.toLocalDate()
+        }.toSortedMap(compareByDescending { it })
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),

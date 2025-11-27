@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Paw Planner</string>
+    <string name="app_name">DayScript</string>
     
     <!-- Navigation -->
     <string name="nav_home">День</string>

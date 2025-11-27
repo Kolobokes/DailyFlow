@@ -159,7 +159,10 @@ fun DailyFlowNavigation(initialTaskId: String? = null, activity: androidx.activi
             }
             composable(
                 route = Screen.NoteDetail.route,
-                arguments = listOf(navArgument("noteId") { nullable = true })
+                arguments = listOf(
+                    navArgument("noteId") { nullable = true },
+                    navArgument("categoryId") { nullable = true; type = NavType.StringType }
+                )
             ) { 
                 NoteDetailScreen(navController = navController)
             }

@@ -41,7 +41,10 @@ fun NotesScreen(navController: NavController) {
 
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(onClick = { navController.navigate(Screen.NoteDetail.createRoute(null)) }) {
+            FloatingActionButton(onClick = { 
+                val categoryId = if (selectedCategoryId != null && selectedCategoryId != "") selectedCategoryId else null
+                navController.navigate(Screen.NoteDetail.createRoute(null, categoryId)) 
+            }) {
                 Icon(Icons.Default.Add, contentDescription = "Создать заметку")
             }
         }

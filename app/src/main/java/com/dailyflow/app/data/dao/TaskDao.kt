@@ -12,7 +12,7 @@ interface TaskDao {
     @Query("SELECT * FROM tasks WHERE status != 'COMPLETED' AND status != 'CANCELLED' ORDER BY startDateTime")
     fun getAllActiveTasks(): Flow<List<Task>>
 
-    @Query("SELECT * FROM tasks ORDER BY startDateTime DESC")
+    @Query("SELECT * FROM tasks ORDER BY CASE WHEN startDateTime IS NULL THEN createdAt ELSE startDateTime END DESC")
     fun getAllTasksSortedByDate(): Flow<List<Task>>
     
     @Query("SELECT * FROM tasks WHERE DATE(startDateTime) = DATE(:date) ORDER BY startDateTime")

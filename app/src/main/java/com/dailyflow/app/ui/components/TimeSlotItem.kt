@@ -172,38 +172,33 @@ fun SwipeableTaskCard(
     modifier: Modifier = Modifier,
     containerColorOverride: Color? = null
 ) {
-    var shouldResetDismiss by remember { mutableStateOf(false) }
-    
     val dismissState = rememberDismissState(
         confirmStateChange = { dismissValue ->
             when (dismissValue) {
                 DismissValue.DismissedToEnd -> {
-                    // Свайп вправо - выполнить задачу
-                    if (task.status != TaskStatus.COMPLETED && task.status != TaskStatus.CANCELLED) {
+                    // Свайп вправо - выполнить задачу (PENDING -> COMPLETED)
+                    if (task.status == TaskStatus.PENDING) {
                         onToggle(true)
-                        shouldResetDismiss = true
                     }
-                    false // Не подтверждаем изменение, чтобы состояние сбросилось
+                    false // Не подтверждаем, чтобы состояние сбросилось
                 }
                 DismissValue.DismissedToStart -> {
-                    // Свайп влево - вернуть в работу
+                    // Свайп влево - вернуть в работу (COMPLETED -> PENDING)
                     if (task.status == TaskStatus.COMPLETED) {
-                        onToggle(false)
-                        shouldResetDismiss = true
+                        onToggle(false) // Вернуть в статус PENDING (не выполнено)
                     }
-                    false // Не подтверждаем изменение, чтобы состояние сбросилось
+                    false // Не подтверждаем, чтобы состояние сбросилось
                 }
                 else -> false
             }
         }
     )
     
-    // Сбрасываем состояние после выполнения действия
-    LaunchedEffect(shouldResetDismiss) {
-        if (shouldResetDismiss) {
-            delay(400) // Небольшая задержка для видимости анимации
+    // Сбрасываем состояние после действия с задержкой для завершения анимации
+    LaunchedEffect(dismissState.currentValue) {
+        if (dismissState.currentValue != DismissValue.Default) {
+            kotlinx.coroutines.delay(350) // Задержка для завершения анимации
             dismissState.reset()
-            shouldResetDismiss = false
         }
     }
 
@@ -212,7 +207,7 @@ fun SwipeableTaskCard(
         directions = setOf(DismissDirection.StartToEnd, DismissDirection.EndToStart),
         background = {
             val direction = dismissState.dismissDirection ?: return@SwipeToDismiss
-            val completing = direction == DismissDirection.StartToEnd && task.status != TaskStatus.COMPLETED && task.status != TaskStatus.CANCELLED
+            val completing = direction == DismissDirection.StartToEnd && task.status == TaskStatus.PENDING
             val returning = direction == DismissDirection.EndToStart && task.status == TaskStatus.COMPLETED
             val bgColor = when {
                 completing -> MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
@@ -226,7 +221,7 @@ fun SwipeableTaskCard(
             }
             val label = when {
                 completing -> "Выполнить"
-                returning -> "Вернуть"
+                returning -> "Не выполнено"
                 else -> "Действие"
             }
             val alignment = if (direction == DismissDirection.StartToEnd) Alignment.CenterStart else Alignment.CenterEnd
@@ -297,69 +292,93 @@ fun TaskCard(
             .clickable { onClick() },
         colors = CardDefaults.cardColors(containerColor = baseContainerColor)
     ) {
-        Row(
-            modifier = Modifier.padding(start = 16.dp, end = 4.dp, top = 12.dp, bottom = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.padding(start = 16.dp, end = 4.dp, top = 12.dp, bottom = 12.dp)
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = task.title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    textDecoration = if (task.status == TaskStatus.COMPLETED || isCancelled)
-                        TextDecoration.LineThrough else TextDecoration.None,
-                    color = if (task.status == TaskStatus.COMPLETED || isCancelled)
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    else MaterialTheme.colorScheme.onSurface
-                )
-                val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
-                val timeText = if (task.startDateTime != null && task.endDateTime != null) {
-                    "${task.startDateTime.format(timeFormatter)} - ${task.endDateTime.format(timeFormatter)}"
-                } else {
-                    task.startDateTime?.format(timeFormatter) ?: ""
-                }
-                if (timeText.isNotEmpty()) {
-                    Text(
-                        text = timeText,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                    )
-                }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Убрали текстовый статус - оставляем только визуальные индикаторы
-                    Spacer(modifier = Modifier.width(0.dp))
-                    if (isOverdue) {
-                        Icon(Icons.Default.Warning, "Просрочено", tint = OverdueColor, modifier = Modifier.size(12.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                    }
-                    category?.let { cat ->
-                        Icon(
-                            getCategoryIcon(cat.icon),
-                            contentDescription = null,
-                            modifier = Modifier.size(12.dp),
-                            tint = Color(android.graphics.Color.parseColor(cat.color))
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    // Заголовок задачи с индикатором важности
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        // Отображаем звездочку для MEDIUM (желтый) и HIGH (красный) приоритетов
+                        if (task.priority == Priority.HIGH || task.priority == Priority.MEDIUM) {
+                            val starColor = when (task.priority) {
+                                Priority.HIGH -> HighPriorityColor
+                                Priority.MEDIUM -> Color(0xFFFFC107) // Желтый цвет для MEDIUM
+                                else -> HighPriorityColor
+                            }
+                            Icon(
+                                Icons.Default.Star,
+                                "Важно",
+                                tint = starColor,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                         Text(
-                            text = cat.name,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color(android.graphics.Color.parseColor(cat.color))
+                            text = task.title,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            textDecoration = if (task.status == TaskStatus.COMPLETED || isCancelled)
+                                TextDecoration.LineThrough else TextDecoration.None,
+                            color = if (task.status == TaskStatus.COMPLETED || isCancelled)
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            else MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f)
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
                     }
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(priorityColor)
-                    )
+                    val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+                    val timeText = if (task.startDateTime != null && task.endDateTime != null) {
+                        "${task.startDateTime.format(timeFormatter)} - ${task.endDateTime.format(timeFormatter)}"
+                    } else {
+                        task.startDateTime?.format(timeFormatter) ?: ""
+                    }
+                    if (timeText.isNotEmpty()) {
+                        Text(
+                            text = timeText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                        )
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Убрали текстовый статус - оставляем только визуальные индикаторы
+                        Spacer(modifier = Modifier.width(0.dp))
+                        if (isOverdue) {
+                            Icon(Icons.Default.Warning, "Просрочено", tint = OverdueColor, modifier = Modifier.size(12.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                        }
+                        category?.let { cat ->
+                            Icon(
+                                getCategoryIcon(cat.icon),
+                                contentDescription = null,
+                                modifier = Modifier.size(12.dp),
+                                tint = Color(android.graphics.Color.parseColor(cat.color))
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = cat.name,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(android.graphics.Color.parseColor(cat.color))
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(priorityColor)
+                        )
+                    }
                 }
-            }
-            var showMenu by remember { mutableStateOf(false) }
-            Box {
-                IconButton(onClick = { showMenu = true }) {
+                var showMenu by remember { mutableStateOf(false) }
+                Box {
+                    IconButton(onClick = { showMenu = true }) {
                     Icon(Icons.Default.MoreVert, contentDescription = "Действия")
                 }
                 DropdownMenu(
@@ -395,6 +414,7 @@ fun TaskCard(
                         },
                         leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) }
                     )
+                }
                 }
             }
         }

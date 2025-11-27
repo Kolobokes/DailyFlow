@@ -10,6 +10,7 @@ import com.dailyflow.app.data.repository.TaskRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -104,55 +105,72 @@ class AnalyticsViewModel @Inject constructor(
     private val combinedState = combine(
         _selectedPreset,
         _currentRange,
-        tasksFlow,
-        categoriesFlow
+        tasksFlow.catch { emit(emptyList()) },
+        categoriesFlow.catch { emit(emptyList()) }
     ) { preset, range, tasks, categories ->
         val normalizedRange = range.ensureOrder()
         val startDateTime = normalizedRange.start.atStartOfDay()
         val endDateTime = normalizedRange.end.plusDays(1).atStartOfDay()
         val categoriesMap = categories.associateBy { it.id }
 
-        val tasksInRange = tasks.filter { task ->
-            val point = task.startDateTime
-                ?: task.createdAt
-            point != null && !point.isBefore(startDateTime) && point.isBefore(endDateTime)
+        val tasksInRange = tasks.filterNotNull().filter { task ->
+            val point = task.startDateTime ?: task.createdAt
+            point != null && point.isAfter(startDateTime.minusNanos(1)) && point.isBefore(endDateTime)
         }
         val totalTasks = tasksInRange.size
-        val distribution = buildDistribution(
-            tasksInRange,
-            categoriesMap,
-            totalTasks
-        )
+        val distribution = try {
+            buildDistribution(
+                tasksInRange,
+                categoriesMap,
+                totalTasks
+            )
+        } catch (e: Exception) {
+            emptyList()
+        }
 
         val now = LocalDateTime.now()
-        val overdueTasks = tasks.filter { task ->
+        val overdueTasks = tasks.filterNotNull().filter { task ->
             task.status == TaskStatus.PENDING && isTaskOverdue(task, now)
         }
-        val overdueDistribution = buildDistribution(
-            overdueTasks,
-            categoriesMap,
-            overdueTasks.size
-        )
+        val overdueDistribution = try {
+            buildDistribution(
+                overdueTasks,
+                categoriesMap,
+                overdueTasks.size
+            )
+        } catch (e: Exception) {
+            emptyList()
+        }
         val overdueItems = overdueTasks
             .sortedBy { it.endDateTime ?: it.startDateTime ?: it.createdAt }
-            .map { task ->
+            .mapNotNull { task ->
+                val dueDate = task.endDateTime ?: task.startDateTime ?: task.createdAt
+                if (dueDate == null) return@mapNotNull null
                 val category = categoriesMap[task.categoryId]
                 OverdueTaskItem(
                     id = task.id,
                     title = task.title,
-                    dueDate = task.endDateTime ?: task.startDateTime ?: task.createdAt,
+                    dueDate = dueDate,
                     categoryName = category?.name,
                     categoryColor = category?.color
                 )
             }
 
-        val completionStats = buildCompletionStats(
-            preset = preset,
-            normalizedRange = normalizedRange,
-            tasks = tasks
-        )
+        val completionStats = try {
+            buildCompletionStats(
+                preset = preset,
+                normalizedRange = normalizedRange,
+                tasks = tasks.filterNotNull()
+            )
+        } catch (e: Exception) {
+            null
+        }
 
-        val workload = buildWorkloadHeatmap(tasksInRange)
+        val workload = try {
+            buildWorkloadHeatmap(tasksInRange)
+        } catch (e: Exception) {
+            emptyList()
+        }
 
         AnalyticsUiState(
             selectedPreset = preset,
@@ -227,13 +245,13 @@ class AnalyticsViewModel @Inject constructor(
         total: Int
     ): List<CategoryDistribution> {
         if (tasks.isEmpty() || total == 0) return emptyList()
-        val grouped = tasks.groupBy { it.categoryId }
+        val grouped = tasks.filterNotNull().groupBy { it.categoryId }
         return grouped.map { (categoryId, items) ->
             val category = categoryId?.let { categories[it] }
             val name = category?.name ?: UNCATEGORIZED_NAME
             val color = category?.color
             val count = items.size
-            val percent = (count.toFloat() / total.toFloat()) * 100f
+            val percent = if (total == 0) 0f else ((count.toFloat() / total.toFloat()) * 100f).coerceIn(0f, 100f)
             CategoryDistribution(
                 categoryId = categoryId,
                 name = name,
@@ -267,14 +285,14 @@ class AnalyticsViewModel @Inject constructor(
         }
         val startDateTime = statsRange.start.atStartOfDay()
         val endDateTime = statsRange.end.plusDays(1).atStartOfDay()
-        val tasksForStats = tasks.filter { task ->
+        val tasksForStats = tasks.filterNotNull().filter { task ->
             val point = task.startDateTime ?: task.createdAt
-            point != null && !point.isBefore(startDateTime) && point.isBefore(endDateTime)
+            point != null && point.isAfter(startDateTime.minusNanos(1)) && point.isBefore(endDateTime)
         }
         if (tasksForStats.isEmpty()) return null
         val planned = tasksForStats.size
         val completed = tasksForStats.count { it.status == TaskStatus.COMPLETED }
-        val percent = if (planned == 0) 0f else (completed.toFloat() / planned.toFloat()) * 100f
+        val percent = if (planned == 0) 0f else ((completed.toFloat() / planned.toFloat()) * 100f).coerceIn(0f, 100f)
         val label = if (statsRange.start == statsRange.end) {
             statsRange.start.format(dateLabelFormatter)
         } else {
@@ -290,16 +308,16 @@ class AnalyticsViewModel @Inject constructor(
 
     private fun buildWorkloadHeatmap(tasks: List<Task>): List<WorkloadHeatmapCell> {
         if (tasks.isEmpty()) return emptyList()
-        val counts = mutableMapOf<Pair<DayOfWeek, Int>, Int>()
+        val counts = mutableMapOf<DayOfWeek, Int>()
         var maxCount = 0
-        tasks.forEach { task ->
-            val dateTime = task.startDateTime ?: task.createdAt ?: return@forEach
-            val day = dateTime.dayOfWeek
-            val hour = dateTime.hour
-            val key = day to hour
-            val value = (counts[key] ?: 0) + 1
-            counts[key] = value
-            if (value > maxCount) maxCount = value
+        tasks.filterNotNull().forEach { task ->
+            val dateTime = task.startDateTime ?: task.createdAt
+            if (dateTime != null) {
+                val day = dateTime.dayOfWeek
+                val value = (counts[day] ?: 0) + 1
+                counts[day] = value
+                if (value > maxCount) maxCount = value
+            }
         }
         if (maxCount == 0) return emptyList()
         val dayOrder = listOf(
@@ -311,17 +329,15 @@ class AnalyticsViewModel @Inject constructor(
             DayOfWeek.SATURDAY,
             DayOfWeek.SUNDAY
         )
-        return dayOrder.flatMap { day ->
-            (0 until 24).map { hour ->
-                val count = counts[day to hour] ?: 0
-                val intensity = if (maxCount > 0) count.toFloat() / maxCount.toFloat() else 0f
-                WorkloadHeatmapCell(
-                    dayOfWeek = day,
-                    hour = hour,
-                    count = count,
-                    intensity = intensity
-                )
-            }
+        return dayOrder.map { day ->
+            val count = counts[day] ?: 0
+            val intensity = if (maxCount > 0) (count.toFloat() / maxCount.toFloat()).coerceIn(0f, 1f) else 0f
+            WorkloadHeatmapCell(
+                dayOfWeek = day,
+                hour = 0, // Не используется для отчета по дням недели
+                count = count,
+                intensity = intensity
+            )
         }
     }
 

@@ -811,12 +811,16 @@ fun TaskDetailScreen(
 @Composable
 fun PriorityIcon(priority: Priority, onClick: () -> Unit) {
     val color = when (priority) {
-        Priority.HIGH -> Color.Red
-        Priority.MEDIUM -> Color.Yellow
+        Priority.HIGH -> Color(0xFFF44336) // Красный
+        Priority.MEDIUM -> Color(0xFFFFC107) // Желтый
         Priority.LOW -> Color.Gray
     }
     IconButton(onClick = onClick) {
-        Icon(Icons.Default.LocalFireDepartment, contentDescription = "Приоритет", tint = color)
+        if (priority == Priority.HIGH || priority == Priority.MEDIUM) {
+            Icon(Icons.Default.Star, contentDescription = "Приоритет", tint = color)
+        } else {
+            Icon(Icons.Default.Star, contentDescription = "Приоритет", tint = color.copy(alpha = 0.3f))
+        }
     }
 }
 

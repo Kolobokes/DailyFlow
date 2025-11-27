@@ -39,7 +39,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -70,6 +69,13 @@ import java.time.format.TextStyle
 import java.time.Month
 import java.util.Locale
 import android.widget.Toast
+import android.content.res.Configuration
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.rememberDatePickerState
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import kotlinx.coroutines.delay
@@ -146,13 +152,19 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltView
                 IconButton(onClick = { viewModel.selectPreviousDay() }) {
                     Icon(Icons.Default.ArrowBack, contentDescription = "Предыдущий день")
                 }
+                var showDatePicker by remember { mutableStateOf(false) }
+                val datePickerState = rememberDatePickerState(
+                    initialSelectedDateMillis = selectedLocalDate.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+                )
+                
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.clickable { showCalendar = !showCalendar }
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(
                         horizontalAlignment = Alignment.Start,
-                        modifier = Modifier.padding(end = 8.dp)
+                        modifier = Modifier
+                            .padding(end = 8.dp)
+                            .clickable { showDatePicker = true }
                     ) {
                         val isToday = selectedLocalDate == LocalDate.now()
                         val dayOfWeek = selectedLocalDate.dayOfWeek.getDisplayName(TextStyle.FULL, Locale("ru"))
@@ -190,8 +202,47 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltView
                     }
                     Icon(
                         imageVector = if (showCalendar) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                        contentDescription = if (showCalendar) "Свернуть календарь" else "Развернуть календарь"
+                        contentDescription = if (showCalendar) "Свернуть календарь" else "Развернуть календарь",
+                        modifier = Modifier.clickable { showCalendar = !showCalendar }
                     )
+                }
+                
+                if (showDatePicker) {
+                    val russianContext = remember(context) {
+                        val config = android.content.res.Configuration(context.resources.configuration)
+                        config.setLocale(Locale("ru"))
+                        context.createConfigurationContext(config)
+                    }
+                    val russianConfiguration = remember(russianContext) { russianContext.resources.configuration }
+                    
+                    DatePickerDialog(
+                        onDismissRequest = { showDatePicker = false },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                datePickerState.selectedDateMillis?.let {
+                                    val selectedDate = java.time.Instant.ofEpochMilli(it)
+                                        .atZone(java.time.ZoneId.systemDefault())
+                                        .toLocalDate()
+                                    viewModel.updateSelectedDate(selectedDate.atStartOfDay())
+                                }
+                                showDatePicker = false
+                            }) {
+                                Text("ОК")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showDatePicker = false }) {
+                                Text("Отмена")
+                            }
+                        }
+                    ) {
+                        CompositionLocalProvider(
+                            LocalContext provides russianContext,
+                            LocalConfiguration provides russianConfiguration
+                        ) {
+                            DatePicker(state = datePickerState)
+                        }
+                    }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { viewModel.selectNextDay() }) {
@@ -552,20 +603,23 @@ private fun VerticalTimeline(
                         TaskStatus.CANCELLED -> Color(0xFFE53935).copy(alpha = 0.15f)
                         TaskStatus.PENDING -> item.color.copy(alpha = 0.6f)
                     }
-                    SwipeableTaskCard(
-                        task = item.task,
-                        category = category,
-                        onClick = { onTaskClick(item.task) },
-                        onToggle = { isCompleted -> onToggle(item.task, isCompleted) },
-                        onDelete = { onDelete(item.task) },
-                        onCancel = { onCancel(item.task) },
+                    Box(
                         modifier = Modifier
                             .width(width)
                             .offset(x = xOffset, y = topOffset)
                             .height(height)
-                            .padding(horizontal = 6.dp, vertical = 2.dp),
-                        containerColorOverride = statusBackground
-                    )
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        SwipeableTaskCard(
+                            task = item.task,
+                            category = category,
+                            onClick = { onTaskClick(item.task) },
+                            onToggle = { isCompleted -> onToggle(item.task, isCompleted) },
+                            onDelete = { onDelete(item.task) },
+                            onCancel = { onCancel(item.task) },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
                 }
             }
         }

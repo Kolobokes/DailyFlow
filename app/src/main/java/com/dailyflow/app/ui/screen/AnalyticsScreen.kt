@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -572,99 +573,70 @@ private fun WorkloadHeatmap(cells: List<WorkloadHeatmapCell>) {
         DayOfWeek.SUNDAY
     )
     val dayLabels = listOf("Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс")
-    val hourMarks = listOf(0, 6, 12, 18, 23)
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Spacer(modifier = Modifier.width(32.dp))
-            hourMarks.forEach { hour ->
-                Text(
-                    text = String.format("%02d", hour),
-                    style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.width(36.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-
-        val rowScroll = rememberScrollState()
-        Column(
-            modifier = Modifier.horizontalScroll(rowScroll),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            dayOrder.forEachIndexed { index, day ->
-                val rowCells = cells.filter { it.dayOfWeek == day }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = dayLabels[index],
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.width(28.dp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                        rowCells.forEach { cell ->
-                            val intensity = cell.intensity
-                            val color = if (intensity == 0f) {
-                                MaterialTheme.colorScheme.surfaceVariant
-                            } else {
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.25f + 0.75f * intensity)
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .size(20.dp)
-                                    .clip(MaterialTheme.shapes.small)
-                                    .background(color),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (cell.count > 0) {
-                                    Text(
-                                        text = cell.count.toString(),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onPrimary,
-                                        maxLines = 1
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        Row(
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = stringResource(R.string.analytics_workload_legend_low),
+                text = "День",
                 style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.width(60.dp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                listOf(0.2f, 0.5f, 0.8f, 1f).forEach { intensity ->
-                    Box(
-                        modifier = Modifier
-                            .size(16.dp)
-                            .clip(MaterialTheme.shapes.small)
-                            .background(
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.25f + 0.75f * intensity)
-                            )
+            Text(
+                text = "Количество задач",
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.weight(1f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        dayOrder.forEachIndexed { index, day ->
+            val cell = cells.find { it.dayOfWeek == day } ?: WorkloadHeatmapCell(day, 0, 0, 0f)
+            val intensity = cell.intensity
+            val color = if (intensity == 0f) {
+                MaterialTheme.colorScheme.surfaceVariant
+            } else {
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.25f + 0.75f * intensity)
+            }
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = dayLabels[index],
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.width(60.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Row(
+                    modifier = Modifier.weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (intensity > 0f) {
+                        Box(
+                            modifier = Modifier
+                                .weight(intensity.coerceIn(0.001f, 1f), fill = true)
+                                .height(24.dp)
+                                .background(color, RoundedCornerShape(4.dp))
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.weight(0.001f, fill = true))
+                    }
+                    Text(
+                        text = "${cell.count}",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.width(40.dp),
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
-            Text(
-                text = stringResource(R.string.analytics_workload_legend_high),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }

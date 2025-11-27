@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.rememberDismissState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,9 +43,15 @@ fun SwipeableTaskCard(
                 DismissValue.DismissedToStart -> onToggle(false)
                 else -> {}
             }
-            false
+            true // Allow the state to be updated
         }
     )
+
+    LaunchedEffect(dismissState.currentValue) {
+        if (dismissState.currentValue != DismissValue.Default) {
+            dismissState.reset()
+        }
+    }
 
     SwipeToDismiss(
         state = dismissState,
