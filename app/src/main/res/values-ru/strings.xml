@@ -294,4 +294,10 @@
     <string name="task_detail_recurrence_end_date">После даты</string>
     <string name="task_detail_recurrence_count">После количества повторов</string>
     <string name="task_detail_recurrence_count_label">Количество повторов</string>
+
+    <string name="settings_general">Общие</string>
+    <string name="settings_default_reminder">Время напоминания по умолчанию (мин)</string>
+    <string name="settings_open_system_notifications">Открыть системные настройки уведомлений</string>
+    <string name="checklist_item_placeholder">Пункт</string>
+    <string name="delete_item">Удалить пункт</string>
 </resources>

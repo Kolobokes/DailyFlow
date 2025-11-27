@@ -297,4 +297,10 @@
     <string name="task_detail_recurrence_end_date">After date</string>
     <string name="task_detail_recurrence_count">After number of occurrences</string>
     <string name="task_detail_recurrence_count_label">Number of occurrences</string>
+
+    <string name="settings_general">General</string>
+    <string name="settings_default_reminder">Default reminder time (min)</string>
+    <string name="settings_open_system_notifications">Open system notification settings</string>
+    <string name="checklist_item_placeholder">Item</string>
+    <string name="delete_item">Delete item</string>
 </resources>

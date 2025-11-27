@@ -50,6 +50,8 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.UUID
 
+import androidx.appcompat.app.AppCompatDelegate // Added import
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NoteDetailScreen(
@@ -74,12 +76,17 @@ fun NoteDetailScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     val datePickerState = rememberDatePickerState()
     val context = LocalContext.current
-    val russianContext = remember(context) {
+    val currentLocale = remember(context) { 
+        val appLocales = AppCompatDelegate.getApplicationLocales()
+        if (!appLocales.isEmpty) appLocales.get(0) ?: Locale.getDefault() else Locale.getDefault()
+    }
+    
+    val localizedContext = remember(context, currentLocale) {
         val config = Configuration(context.resources.configuration)
-        config.setLocale(Locale("ru"))
+        config.setLocale(currentLocale)
         context.createConfigurationContext(config)
     }
-    val russianConfiguration = remember(russianContext) { russianContext.resources.configuration }
+    val localizedConfiguration = remember(localizedContext) { localizedContext.resources.configuration }
     val keyboardController = LocalSoftwareKeyboardController.current
     var isChecklist by remember { mutableStateOf(false) }
     val checklistItems = remember { mutableStateListOf<ChecklistItem>() }
@@ -268,15 +275,15 @@ fun NoteDetailScreen(
                         setDataAndType(uri, context.contentResolver.getType(uri) ?: "*/*")
                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     }
-                    context.startActivity(Intent.createChooser(intent, "Открыть файл"))
+                    context.startActivity(Intent.createChooser(intent, context.getString(R.string.note_open_file)))
                 } else {
-                    Toast.makeText(context, "Не удалось открыть файл", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.note_file_open_error, ""), Toast.LENGTH_SHORT).show()
                 }
             } else {
-                Toast.makeText(context, "Файл не найден", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.note_file_not_found), Toast.LENGTH_SHORT).show()
             }
         } catch (e: Exception) {
-            Toast.makeText(context, "Не удалось открыть файл: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.note_file_open_error, e.message ?: ""), Toast.LENGTH_SHORT).show()
         }
     }
     
@@ -357,7 +364,7 @@ fun NoteDetailScreen(
                 title = { Text(if (uiState.isNewNote) stringResource(R.string.new_note) else stringResource(R.string.edit_note)) },
                 navigationIcon = {
                     IconButton(onClick = { handleBackNavigation() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
@@ -366,7 +373,7 @@ fun NoteDetailScreen(
                             coroutineScope.launch {
                                 val exportText = viewModel.exportCurrentNote()
                                 if (exportText == null) {
-                                    Toast.makeText(context, "Не удалось подготовить файл", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, context.getString(R.string.note_export_failed), Toast.LENGTH_SHORT).show()
                                     return@launch
                                 }
                                 val baseName = (uiState.note?.title ?: "note").ifBlank { "note" }
@@ -377,17 +384,17 @@ fun NoteDetailScreen(
                                 noteExportLauncher.launch(fileName)
                             }
                         }) {
-                            Icon(Icons.Default.FileDownload, contentDescription = "Экспортировать заметку")
+                            Icon(Icons.Default.FileDownload, contentDescription = stringResource(R.string.task_export_task))
                         }
                         IconButton(onClick = { 
                             viewModel.deleteNote()
                             navController.popBackStack()
                         }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Удалить")
+                            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete))
                         }
                     }
                     IconButton(onClick = { saveAndClose() }) {
-                        Icon(Icons.Default.Done, contentDescription = "Сохранить")
+                        Icon(Icons.Default.Done, contentDescription = stringResource(R.string.save))
                     }
                 }
             )
@@ -407,7 +414,7 @@ fun NoteDetailScreen(
             OutlinedTextField(
                 value = title,
                 onValueChange = { title = it },
-                label = { Text("Заголовок") },
+                label = { Text(stringResource(R.string.note_title)) },
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -416,7 +423,7 @@ fun NoteDetailScreen(
                     value = selectedCategory?.name ?: "",
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("Категория") },
+                    label = { Text(stringResource(R.string.task_category)) },
                     trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) },
                     modifier = Modifier.fillMaxWidth().menuAnchor()
                 )
@@ -438,7 +445,7 @@ fun NoteDetailScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("Чек-лист")
+                Text(stringResource(R.string.checklist))
                 Switch(checked = isChecklist, onCheckedChange = { checked ->
                     if (checked && !isChecklist) {
                         if (checklistItems.isEmpty() && content.isNotBlank()) {
@@ -526,15 +533,15 @@ fun NoteDetailScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Прикрепленный файл", style = MaterialTheme.typography.titleSmall)
+                    Text(stringResource(R.string.note_attached_file), style = MaterialTheme.typography.titleSmall)
                     Row {
                         if (attachedFileName != null) {
                             IconButton(onClick = { removeAttachedFile() }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Удалить файл")
+                                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.note_delete_file))
                             }
                         }
                         IconButton(onClick = { filePickerLauncher.launch("*/*") }) {
-                            Icon(Icons.Default.AttachFile, contentDescription = "Прикрепить файл")
+                            Icon(Icons.Default.AttachFile, contentDescription = stringResource(R.string.note_attach_file))
                         }
                     }
                 }
@@ -558,11 +565,11 @@ fun NoteDetailScreen(
                             )
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = attachedFileDisplayName ?: "Файл",
+                                    text = attachedFileDisplayName ?: stringResource(R.string.file_default_name),
                                     style = MaterialTheme.typography.bodyMedium
                                 )
                                 Text(
-                                    text = "Нажмите для открытия",
+                                    text = stringResource(R.string.note_click_to_open),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -578,7 +585,7 @@ fun NoteDetailScreen(
             ) {
                 Checkbox(checked = isCompleted, onCheckedChange = { isCompleted = it })
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Выполнено", modifier = Modifier.weight(1f))
+                Text(stringResource(R.string.task_status_completed), modifier = Modifier.weight(1f))
             }
             
             Button(
@@ -594,7 +601,7 @@ fun NoteDetailScreen(
                 onClick = { saveAndClose() },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Сохранить")
+                Text(stringResource(R.string.save))
             }
         }
     }
@@ -652,7 +659,7 @@ private fun ChecklistEditor(
         ) {
             Icon(Icons.Default.Add, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Добавить пункт")
+            Text(stringResource(R.string.add_item))
         }
     }
 }
@@ -678,7 +685,7 @@ private fun ChecklistItemRow(
             value = item.text,
             onValueChange = onTextChange,
             modifier = Modifier.weight(1f),
-            placeholder = { Text("Пункт") },
+            placeholder = { Text(stringResource(R.string.checklist_item_placeholder)) },
             textStyle = LocalTextStyle.current.copy(textDecoration = if (item.isChecked) TextDecoration.LineThrough else null),
             minLines = 1,
             maxLines = 5,
@@ -686,7 +693,7 @@ private fun ChecklistItemRow(
         )
         Spacer(modifier = Modifier.width(4.dp))
         IconButton(onClick = onRemove) {
-            Icon(Icons.Default.Delete, contentDescription = "Удалить пункт")
+            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete_item))
         }
     }
 }

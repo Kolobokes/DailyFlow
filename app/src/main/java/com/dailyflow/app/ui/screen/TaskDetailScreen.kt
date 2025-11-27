@@ -67,12 +67,17 @@ fun TaskDetailScreen(
     val coroutineScope = rememberCoroutineScope()
     val showPermissionDialog by viewModel.showExactAlarmPermissionDialog.collectAsState()
     val context = LocalContext.current
-    val russianContext = remember(context) {
+    val currentLocale = remember(context) { 
+        val appLocales = AppCompatDelegate.getApplicationLocales()
+        if (!appLocales.isEmpty) appLocales.get(0) ?: Locale.getDefault() else Locale.getDefault()
+    }
+    
+    val localizedContext = remember(context, currentLocale) {
         val config = Configuration(context.resources.configuration)
-        config.setLocale(Locale("ru"))
+        config.setLocale(currentLocale)
         context.createConfigurationContext(config)
     }
-    val russianConfiguration = remember(russianContext) { russianContext.resources.configuration }
+    val localizedConfiguration = remember(localizedContext) { localizedContext.resources.configuration }
     val contentScrollState = rememberScrollState()
 
     var title by remember { mutableStateOf("") }
@@ -133,18 +138,18 @@ fun TaskDetailScreen(
                         context.contentResolver.query(it, null, null, null, null)?.use { cursor ->
                             val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
                             if (nameIndex >= 0 && cursor.moveToFirst()) {
-                                attachedFileDisplayName = cursor.getString(nameIndex) ?: "Файл"
+                                attachedFileDisplayName = cursor.getString(nameIndex) ?: stringResource(R.string.file_default_name)
                             } else {
-                                attachedFileDisplayName = "Файл"
+                                attachedFileDisplayName = stringResource(R.string.file_default_name)
                             }
                         } ?: run {
-                            attachedFileDisplayName = it.path?.substringAfterLast('/') ?: "Файл"
+                            attachedFileDisplayName = it.path?.substringAfterLast('/') ?: stringResource(R.string.file_default_name)
                         }
                     } catch (e: Exception) {
-                        attachedFileDisplayName = "Файл"
+                        attachedFileDisplayName = stringResource(R.string.file_default_name)
                     }
                 } else {
-                    Toast.makeText(context, "Не удалось сохранить файл", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, stringResource(R.string.file_save_error), Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -160,9 +165,9 @@ fun TaskDetailScreen(
                     stream.write(text.toByteArray(StandardCharsets.UTF_8))
                 }
             }.onSuccess {
-                Toast.makeText(context, "Задача сохранена в файл", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, stringResource(R.string.task_saved_to_file), Toast.LENGTH_SHORT).show()
             }.onFailure {
-                Toast.makeText(context, "Не удалось сохранить файл", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, stringResource(R.string.file_save_error), Toast.LENGTH_SHORT).show()
             }
         }
         pendingTaskExport = null
@@ -497,7 +502,7 @@ fun TaskDetailScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Прикрепленный файл", style = MaterialTheme.typography.titleSmall)
+                        Text(stringResource(R.string.task_attached_file), style = MaterialTheme.typography.titleSmall)
                         Row {
                             if (attachedFileName != null) {
                                 IconButton(onClick = { 
@@ -507,11 +512,11 @@ fun TaskDetailScreen(
                                     attachedFileName = null
                                     attachedFileDisplayName = null
                                 }) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Удалить файл")
+                                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.task_delete_file))
                                 }
                             }
                             IconButton(onClick = { filePickerLauncher.launch("*/*") }) {
-                                Icon(Icons.Default.AttachFile, contentDescription = "Прикрепить файл")
+                                Icon(Icons.Default.AttachFile, contentDescription = stringResource(R.string.task_attach_file))
                             }
                         }
                     }
@@ -529,15 +534,15 @@ fun TaskDetailScreen(
                                                 setDataAndType(uri, context.contentResolver.getType(uri) ?: "*/*")
                                                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                             }
-                                            context.startActivity(Intent.createChooser(intent, "Открыть файл"))
+                                            context.startActivity(Intent.createChooser(intent, stringResource(R.string.task_open_file)))
                                         } else {
-                                            Toast.makeText(context, "Не удалось открыть файл", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, stringResource(R.string.task_file_not_found), Toast.LENGTH_SHORT).show()
                                         }
                                     } else {
-                                        Toast.makeText(context, "Файл не найден", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, stringResource(R.string.task_file_not_found), Toast.LENGTH_SHORT).show()
                                     }
                                 } catch (e: Exception) {
-                                    Toast.makeText(context, "Не удалось открыть файл: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, stringResource(R.string.task_file_open_error, e.message), Toast.LENGTH_SHORT).show()
                                 }
                             }
                         ) {
@@ -555,11 +560,11 @@ fun TaskDetailScreen(
                                 )
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = attachedFileDisplayName ?: "Файл",
+                                        text = attachedFileDisplayName ?: stringResource(R.string.file_default_name),
                                         style = MaterialTheme.typography.bodyMedium
                                     )
                                     Text(
-                                        text = "Нажмите для открытия",
+                                        text = stringResource(R.string.task_click_to_open),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -616,7 +621,7 @@ fun TaskDetailScreen(
                         )
                     }
                 }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Сохранить")
+                    Text(stringResource(R.string.save))
                 }
             }
         }
@@ -818,9 +823,9 @@ fun PriorityIcon(priority: Priority, onClick: () -> Unit) {
     }
     IconButton(onClick = onClick) {
         if (priority == Priority.HIGH || priority == Priority.MEDIUM) {
-            Icon(Icons.Default.Star, contentDescription = "Приоритет", tint = color)
+            Icon(Icons.Default.Star, contentDescription = stringResource(R.string.task_priority), tint = color)
         } else {
-            Icon(Icons.Default.Star, contentDescription = "Приоритет", tint = color.copy(alpha = 0.3f))
+            Icon(Icons.Default.Star, contentDescription = stringResource(R.string.task_priority), tint = color.copy(alpha = 0.3f))
         }
     }
 }
@@ -970,7 +975,7 @@ private fun WeeklyDaySelector(
     onToggle: (DayOfWeek) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Дни недели")
+        Text(stringResource(R.string.task_days_of_week))
         val ordered = listOf(
             DayOfWeek.MONDAY,
             DayOfWeek.TUESDAY,

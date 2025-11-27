@@ -16,6 +16,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.dailyflow.app.ui.viewmodel.NotificationSettingsViewModel
+import androidx.compose.ui.res.stringResource
+import com.dailyflow.app.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,10 +31,10 @@ fun NotificationSettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Настройки уведомлений") },
+                title = { Text(stringResource(R.string.settings_notifications)) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
             )
@@ -44,14 +46,14 @@ fun NotificationSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                Text("Общие", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.settings_general), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = defaultReminderMinutes.toString(),
                     onValueChange = { value ->
                         viewModel.setDefaultReminderMinutes(value.toIntOrNull() ?: 60)
                     },
-                    label = { Text("Время напоминания по умолчанию (в минутах)") },
+                    label = { Text(stringResource(R.string.settings_default_reminder)) },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -64,7 +66,7 @@ fun NotificationSettingsScreen(
                     intent.data = Uri.fromParts("package", context.packageName, null)
                     context.startActivity(intent)
                 }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Открыть системные настройки уведомлений")
+                    Text(stringResource(R.string.settings_open_system_notifications))
                 }
             }
         }
