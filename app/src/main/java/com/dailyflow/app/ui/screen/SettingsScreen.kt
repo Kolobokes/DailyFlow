@@ -4,6 +4,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -26,9 +29,46 @@ fun SettingsScreen(
     navController: NavController,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
     val privacyAccepted by viewModel.privacyAccepted.collectAsState()
     val currentLanguage by viewModel.currentLanguage.collectAsState()
     var showPrivacyDialog by remember { mutableStateOf(false) }
+    var showHelpDialog by remember { mutableStateOf(false) }
+
+    if (showHelpDialog) {
+        val email = stringResource(R.string.settings_support_email)
+        AlertDialog(
+            onDismissRequest = { showHelpDialog = false },
+            title = { Text(stringResource(R.string.settings_help_title)) },
+            text = {
+                Column {
+                    Text(stringResource(R.string.settings_support_message))
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = email,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable {
+                            val intent = Intent(Intent.ACTION_SENDTO).apply {
+                                data = Uri.parse("mailto:$email")
+                                putExtra(Intent.EXTRA_SUBJECT, "DayScript Support")
+                            }
+                            try {
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                // Ignore
+                            }
+                        }
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showHelpDialog = false }) {
+                    Text(stringResource(R.string.ok))
+                }
+            }
+        )
+    }
 
     if (showPrivacyDialog) {
         AlertDialog(
@@ -155,7 +195,7 @@ fun SettingsScreen(
                         icon = Icons.Default.Help,
                         title = stringResource(R.string.settings_help_title),
                         subtitle = stringResource(R.string.settings_help_subtitle),
-                        onClick = { /* TODO: Navigate to help */ }
+                        onClick = { showHelpDialog = true }
                     )
                     
                     SettingItem(

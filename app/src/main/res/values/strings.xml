@@ -261,6 +261,8 @@
     <string name="settings_consent_accept">Accept and continue</string>
     <string name="settings_privacy_policy_dialog_title">Privacy Policy</string>
     <string name="settings_privacy_policy_text">1. Data Collection and Usage\nDayScript operates completely offline. We do not collect, store, or transmit your personal data, tasks, or notes to external servers. All data is stored exclusively in a local database on your device.\n\n2. Permissions\nThe application requests the following permissions to ensure functionality:\n- Notifications: To send task reminders.\n- Storage: For data export and backup.\n- Microphone: For voice input of notes (if used).\n\n3. Security\nThe security of your data depends on the security of your device. We recommend using a password or biometrics to protect access to your device.\n\n4. Contact\nIf you have any questions about the application, you can contact the developer.</string>
+    <string name="settings_support_message">If you have any questions or suggestions, please email us:</string>
+    <string name="settings_support_email">work.ink12345@mail.com</string>
     <string name="task_detail_title_new">New task</string>
     <string name="task_detail_title_edit">Edit task</string>
     <string name="task_detail_status_completed">Completed</string>
