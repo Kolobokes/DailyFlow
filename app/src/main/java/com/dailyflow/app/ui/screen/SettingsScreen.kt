@@ -19,6 +19,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.dailyflow.app.BuildConfig
 import com.dailyflow.app.R
 import com.dailyflow.app.ui.navigation.Screen
 import com.dailyflow.app.ui.viewmodel.SettingsViewModel
@@ -187,8 +188,8 @@ fun SettingsScreen(
                     SettingItem(
                         icon = Icons.Default.Info,
                         title = stringResource(R.string.settings_version_title),
-                        subtitle = "1.0.0",
-                        onClick = { /* TODO: Show version info */ }
+                        subtitle = BuildConfig.VERSION_NAME,
+                        onClick = { /* No action needed */ }
                     )
                     
                     SettingItem(
@@ -258,7 +259,7 @@ fun SettingItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
+            .clickable(onClick = onClick, enabled = onClick != {})
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -283,10 +284,12 @@ fun SettingItem(
             )
         }
         
-        Icon(
-            Icons.Default.ChevronRight,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-        )
+        if (onClick != {}) {
+             Icon(
+                Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+            )
+        }
     }
 }
