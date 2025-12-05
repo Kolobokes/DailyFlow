@@ -21,6 +21,9 @@ class NotesViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val selectedDate: String? = savedStateHandle.get<String?>("date")
+    
+    // Публичное свойство для проверки наличия фильтра по дате
+    val hasDateFilter: Boolean = !selectedDate.isNullOrBlank()
 
     private val _selectedCategoryId = MutableStateFlow<String?>(null)
     val selectedCategoryId: StateFlow<String?> = _selectedCategoryId.asStateFlow()

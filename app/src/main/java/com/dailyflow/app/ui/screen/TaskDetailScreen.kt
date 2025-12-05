@@ -349,6 +349,7 @@ fun TaskDetailScreen(
                     ) {
                         Box(
                             modifier = Modifier
+                                .clickable { viewModel.cycleTaskStatus() }
                                 .background(statusColor.copy(alpha = 0.15f), shape = CircleShape)
                                 .padding(horizontal = 12.dp, vertical = 6.dp)
                         ) {

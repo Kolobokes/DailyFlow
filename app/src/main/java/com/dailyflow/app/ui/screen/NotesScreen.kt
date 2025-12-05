@@ -8,12 +8,12 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import com.dailyflow.app.data.model.Note
 import com.dailyflow.app.data.model.Category
 import com.dailyflow.app.ui.navigation.Screen
@@ -40,8 +41,43 @@ fun NotesScreen(navController: NavController) {
     val categories by viewModel.categories.collectAsState()
     val selectedCategoryId by viewModel.selectedCategoryId.collectAsState()
     val showCompleted by viewModel.showCompleted.collectAsState()
+    val hasDateFilter = viewModel.hasDateFilter
+    var menuExpanded by remember { mutableStateOf(false) }
+    
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    val previousEntry = navController.previousBackStackEntry
+    val showBackButton = hasDateFilter || (previousEntry != null && previousEntry.destination.route == Screen.Home.route)
 
     Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.nav_notes)) },
+                navigationIcon = {
+                    if (showBackButton) {
+                        IconButton(onClick = { navController.popBackStack() }) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
+                        }
+                    }
+                },
+                actions = {
+                    Box {
+                        IconButton(onClick = { menuExpanded = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.menu))
+                        }
+                        DropdownMenu(
+                            expanded = menuExpanded,
+                            onDismissRequest = { menuExpanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.show_completed)) },
+                                onClick = { viewModel.toggleShowCompleted(!showCompleted) },
+                                trailingIcon = { Switch(checked = showCompleted, onCheckedChange = null) }
+                            )
+                        }
+                    }
+                }
+            )
+        },
         floatingActionButton = {
             FloatingActionButton(onClick = { 
                 val categoryId = if (selectedCategoryId != null && selectedCategoryId != "") selectedCategoryId else null
@@ -86,12 +122,6 @@ fun NotesScreen(navController: NavController) {
                         )
                     )
                 }
-            }
-            
-            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Switch(checked = showCompleted, onCheckedChange = { viewModel.toggleShowCompleted(it) })
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(stringResource(R.string.show_completed))
             }
 
             LazyColumn(
@@ -159,8 +189,11 @@ fun NoteListItem(note: Note, category: Category?, navController: NavController) 
                         Text(text = it.name, style = MaterialTheme.typography.labelSmall)
                     }
                 }
-                note.dateTime?.let {
-                    Text(text = it.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")), style = MaterialTheme.typography.labelSmall)
+                Column(horizontalAlignment = Alignment.End) {
+                    note.dateTime?.let {
+                        Text(text = "До: ${it.format(DateTimeFormatter.ofPattern("dd.MM.yyyy"))}", style = MaterialTheme.typography.labelSmall)
+                    }
+                    Text(text = "Создано: ${note.createdAt.format(DateTimeFormatter.ofPattern("dd.MM.yyyy"))}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                 }
             }
         }

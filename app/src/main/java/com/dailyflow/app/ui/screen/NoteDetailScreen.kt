@@ -603,6 +603,24 @@ fun NoteDetailScreen(
             ) {
                 Text(stringResource(R.string.save))
             }
+            if (!uiState.isNewNote && uiState.note != null) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Создано: ${uiState.note!!.createdAt.format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"))}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "Обновлено: ${uiState.note!!.updatedAt.format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"))}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
     }
 }

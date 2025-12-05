@@ -6,8 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -39,7 +38,7 @@ import java.util.Locale
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun TasksScreen(
     navController: NavController,
@@ -136,15 +135,14 @@ fun TasksScreen(
                 }
             }
             
-            FlowRow(
+            LazyRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                FilterChip(selected = statusFilter == TasksViewModel.StatusFilter.ALL, onClick = { viewModel.setStatusFilter(TasksViewModel.StatusFilter.ALL) }, label = { Text(stringResource(R.string.filter_all)) })
-                FilterChip(selected = statusFilter == TasksViewModel.StatusFilter.OVERDUE, onClick = { viewModel.setStatusFilter(TasksViewModel.StatusFilter.OVERDUE) }, label = { Text(stringResource(R.string.filter_overdue)) })
-                FilterChip(selected = statusFilter == TasksViewModel.StatusFilter.COMPLETED, onClick = { viewModel.setStatusFilter(TasksViewModel.StatusFilter.COMPLETED) }, label = { Text(stringResource(R.string.filter_completed)) })
-                FilterChip(selected = statusFilter == TasksViewModel.StatusFilter.CANCELLED, onClick = { viewModel.setStatusFilter(TasksViewModel.StatusFilter.CANCELLED) }, label = { Text(stringResource(R.string.filter_cancelled)) })
+                item { FilterChip(selected = statusFilter == TasksViewModel.StatusFilter.ALL, onClick = { viewModel.setStatusFilter(TasksViewModel.StatusFilter.ALL) }, label = { Text(stringResource(R.string.filter_all)) }) }
+                item { FilterChip(selected = statusFilter == TasksViewModel.StatusFilter.OVERDUE, onClick = { viewModel.setStatusFilter(TasksViewModel.StatusFilter.OVERDUE) }, label = { Text(stringResource(R.string.filter_overdue)) }) }
+                item { FilterChip(selected = statusFilter == TasksViewModel.StatusFilter.COMPLETED, onClick = { viewModel.setStatusFilter(TasksViewModel.StatusFilter.COMPLETED) }, label = { Text(stringResource(R.string.filter_completed)) }) }
+                item { FilterChip(selected = statusFilter == TasksViewModel.StatusFilter.CANCELLED, onClick = { viewModel.setStatusFilter(TasksViewModel.StatusFilter.CANCELLED) }, label = { Text(stringResource(R.string.filter_cancelled)) }) }
             }
 
             Spacer(modifier = Modifier.height(8.dp))

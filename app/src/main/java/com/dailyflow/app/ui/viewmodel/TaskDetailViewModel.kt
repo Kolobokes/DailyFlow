@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.dailyflow.app.data.model.Category
 import com.dailyflow.app.data.model.Priority
 import com.dailyflow.app.data.model.Task
+import com.dailyflow.app.data.model.TaskStatus
 import com.dailyflow.app.data.model.RecurrenceRule
 import com.dailyflow.app.data.model.RecurrenceFrequency
 import com.dailyflow.app.data.model.RecurrenceScope
@@ -257,6 +258,22 @@ class TaskDetailViewModel @Inject constructor(
     suspend fun exportCurrentTask(): String? {
         val id = taskId ?: return null
         return exportManager.exportTask(id)
+    }
+
+    fun cycleTaskStatus() {
+        val currentTask = _uiState.value.task ?: return
+        viewModelScope.launch {
+            val nextStatus = when (currentTask.status) {
+                TaskStatus.PENDING -> TaskStatus.COMPLETED
+                TaskStatus.COMPLETED -> TaskStatus.CANCELLED
+                TaskStatus.CANCELLED -> TaskStatus.PENDING
+            }
+            taskRepository.updateTaskStatus(currentTask.id, nextStatus)
+            // Обновляем локальное состояние
+            _uiState.value = _uiState.value.copy(
+                task = currentTask.copy(status = nextStatus)
+            )
+        }
     }
 }
 

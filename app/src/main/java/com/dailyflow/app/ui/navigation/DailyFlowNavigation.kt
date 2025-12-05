@@ -123,7 +123,7 @@ fun DailyFlowNavigation(
         NavHost(
             navController = navController,
             startDestination = Screen.Home.route,
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())
         ) {
             composable(Screen.Home.route) {
                 HomeScreen(navController = navController)
@@ -132,9 +132,12 @@ fun DailyFlowNavigation(
                 TasksScreen(navController = navController)
             }
             composable(
-                route = Screen.Notes.route,
-                arguments = listOf(navArgument("date") { type = NavType.StringType; nullable = true; defaultValue = "" })
+                route = "${Screen.Notes.route}?date={date}",
+                arguments = listOf(navArgument("date") { type = NavType.StringType; nullable = true })
             ) {
+                NotesScreen(navController = navController)
+            }
+            composable(Screen.Notes.route) {
                 NotesScreen(navController = navController)
             }
             composable(Screen.CategoryManagement.route) {

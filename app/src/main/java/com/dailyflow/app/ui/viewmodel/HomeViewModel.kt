@@ -157,6 +157,17 @@ class HomeViewModel @Inject constructor(
             taskRepository.updateTaskStatus(taskId, status)
         }
     }
+
+    fun cycleTaskStatus(taskId: String, currentStatus: com.dailyflow.app.data.model.TaskStatus) {
+        viewModelScope.launch {
+            val nextStatus = when (currentStatus) {
+                com.dailyflow.app.data.model.TaskStatus.PENDING -> com.dailyflow.app.data.model.TaskStatus.COMPLETED
+                com.dailyflow.app.data.model.TaskStatus.COMPLETED -> com.dailyflow.app.data.model.TaskStatus.CANCELLED
+                com.dailyflow.app.data.model.TaskStatus.CANCELLED -> com.dailyflow.app.data.model.TaskStatus.PENDING
+            }
+            taskRepository.updateTaskStatus(taskId, nextStatus)
+        }
+    }
     
     fun toggleNoteCompletion(noteId: String, isCompleted: Boolean) {
         viewModelScope.launch {

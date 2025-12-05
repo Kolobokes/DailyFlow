@@ -93,6 +93,17 @@ class TasksViewModel @Inject constructor(
         }
     }
 
+    fun cycleTaskStatus(taskId: String, currentStatus: TaskStatus) {
+        viewModelScope.launch {
+            val nextStatus = when (currentStatus) {
+                TaskStatus.PENDING -> TaskStatus.COMPLETED
+                TaskStatus.COMPLETED -> TaskStatus.CANCELLED
+                TaskStatus.CANCELLED -> TaskStatus.PENDING
+            }
+            taskRepository.updateTaskStatus(taskId, nextStatus)
+        }
+    }
+
     fun deleteTask(taskId: String) {
         viewModelScope.launch {
             val task = taskRepository.getTaskById(taskId) ?: return@launch

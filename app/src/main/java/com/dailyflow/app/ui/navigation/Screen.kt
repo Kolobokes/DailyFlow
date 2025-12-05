@@ -10,7 +10,11 @@ sealed class Screen(val route: String) {
     object Tasks : Screen("tasks")
     object Notes : Screen("notes") {
         fun createRoute(date: String? = null): String {
-            return date?.let { "notes?date=$it" } ?: "notes"
+            return if (date != null) {
+                "notes?date=$date"
+            } else {
+                "notes"
+            }
         }
     }
     object Analytics : Screen("analytics")

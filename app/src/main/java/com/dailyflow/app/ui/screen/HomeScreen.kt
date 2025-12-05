@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -258,19 +259,33 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltView
                     IconButton(onClick = { viewModel.selectNextDay() }) {
                         Icon(Icons.Default.ArrowForward, contentDescription = stringResource(R.string.next_day))
                     }
-                    IconButton(onClick = {
-                        coroutineScope.launch {
-                            val exportText = runCatching {
-                                viewModel.exportDailyPlan(selectedLocalDate)
-                            }.onFailure {
-                                Toast.makeText(context, context.getString(R.string.file_save_error), Toast.LENGTH_SHORT).show()
-                            }.getOrNull() ?: return@launch
-                            pendingDailyPlanExport = exportText
-                            val fileName = "plan_${selectedLocalDate.format(fileDateFormatter)}.txt"
-                            dailyPlanExportLauncher.launch(fileName)
+                    var menuExpanded by remember { mutableStateOf(false) }
+                    Box {
+                        IconButton(onClick = { menuExpanded = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.menu))
                         }
-                    }) {
-                        Icon(Icons.Default.FileDownload, contentDescription = stringResource(R.string.export_daily_plan))
+                        DropdownMenu(
+                            expanded = menuExpanded,
+                            onDismissRequest = { menuExpanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.export_daily_plan)) },
+                                onClick = {
+                                    coroutineScope.launch {
+                                        val exportText = runCatching {
+                                            viewModel.exportDailyPlan(selectedLocalDate)
+                                        }.onFailure {
+                                            Toast.makeText(context, context.getString(R.string.file_save_error), Toast.LENGTH_SHORT).show()
+                                        }.getOrNull() ?: return@launch
+                                        pendingDailyPlanExport = exportText
+                                        val fileName = "plan_${selectedLocalDate.format(fileDateFormatter)}.txt"
+                                        dailyPlanExportLauncher.launch(fileName)
+                                    }
+                                    menuExpanded = false
+                                },
+                                leadingIcon = { Icon(Icons.Default.FileDownload, contentDescription = null) }
+                            )
+                        }
                     }
                 }
             }
@@ -525,15 +540,33 @@ private fun VerticalTimeline(
         slottedTasks.add(slotted)
     }
 
+    // Определяем, какие часы показывать для расчета общей высоты
+    val isToday = selectedDate == currentDateTime.toLocalDate()
+    val currentHour = if (isToday) currentDateTime.hour else -1
+    val hoursToShow = (0..23).filter { hour ->
+        if (!isToday) {
+            true
+        } else {
+            val hourStart = dayStart.plusHours(hour.toLong())
+            val hourEnd = if (hour == 23) dayEnd else hourStart.plusHours(1)
+            val hasTasks = slottedTasks.any { 
+                it.effectiveStart >= hourStart && it.effectiveStart < hourEnd
+            }
+            hour >= currentHour || hasTasks
+        }
+    }
+    val visibleHourCount = hoursToShow.size
+    val totalHeight = hourHeight * visibleHourCount
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(max = hourHeight * 24)
+            .heightIn(max = totalHeight)
             .verticalScroll(scrollState)
     ) {
         Row(
             modifier = Modifier
-                .height(hourHeight * 24)
+                .height(totalHeight)
                 .fillMaxWidth()
         ) {
             Column(
@@ -541,11 +574,14 @@ private fun VerticalTimeline(
                     .width(64.dp)
                     .fillMaxHeight()
             ) {
-                for (hour in 0..23) {
+                // Вычисляем высоту для каждого видимого часа
+                val visibleHourHeight = if (visibleHourCount > 0) totalHeight / visibleHourCount else hourHeight
+                
+                hoursToShow.forEach { hour ->
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(hourHeight),
+                            .height(visibleHourHeight),
                         contentAlignment = Alignment.TopEnd
                     ) {
                         Text(
@@ -569,15 +605,26 @@ private fun VerticalTimeline(
                 val slotHeight = maxHeight / 24f
                 val minuteHeight = slotHeight / 60f
                 val outlineColor = MaterialTheme.colorScheme.outlineVariant
+                
+                // Вычисляем высоту для каждого видимого часа
+                val visibleSlotHeight = if (visibleHourCount > 0) maxHeight / visibleHourCount else slotHeight
+                val visibleMinuteHeight = visibleSlotHeight / 60f
+                
                 val minuteHeightPx = with(density) { minuteHeight.toPx() }
                 val slotHeightPx = with(density) { slotHeight.toPx() }
+                val visibleSlotHeightPx = with(density) { visibleSlotHeight.toPx() }
+                val visibleMinuteHeightPx = with(density) { visibleMinuteHeight.toPx() }
+                
                 var autoScrolled by remember(selectedDate) { mutableStateOf(false) }
 
-                LaunchedEffect(selectedDate, maxHeight, autoScrolled) {
+                LaunchedEffect(selectedDate, maxHeight, autoScrolled, visibleHourCount, hoursToShow, currentHour) {
                     if (!autoScrolled && maxHeight > 0.dp) {
-                        if (selectedDate == currentDateTime.toLocalDate()) {
-                            val minutes = currentDateTime.hour * 60 + currentDateTime.minute
-                            val targetPx = (minuteHeightPx * minutes - slotHeightPx).toInt().coerceAtLeast(0)
+                        if (selectedDate == currentDateTime.toLocalDate() && hoursToShow.contains(currentHour)) {
+                            // Находим индекс текущего часа в списке видимых часов
+                            val currentHourIndex = hoursToShow.indexOf(currentHour)
+                            val minutes = currentDateTime.minute
+                            val visibleMinuteHeightPx = with(density) { visibleMinuteHeight.toPx() }
+                            val targetPx = ((currentHourIndex * visibleSlotHeightPx) + (visibleMinuteHeightPx * minutes) - visibleSlotHeightPx).toInt().coerceAtLeast(0)
                             scrollState.scrollTo(targetPx)
                         } else {
                             scrollState.scrollTo(0)
@@ -587,7 +634,8 @@ private fun VerticalTimeline(
                 }
 
                 Column(modifier = Modifier.matchParentSize()) {
-                    for (hour in 0..23) {
+                    
+                    hoursToShow.forEach { hour ->
                         val hourStart = dayStart.plusHours(hour.toLong())
                         val hourEnd = if (hour == 23) dayEnd else hourStart.plusHours(1)
                         // Проверяем, есть ли задачи, которые полностью занимают этот час
@@ -604,7 +652,7 @@ private fun VerticalTimeline(
                         HourSlotBox(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(slotHeight),
+                                .height(visibleSlotHeight),
                             showAdd = !occupied,
                             hour = hour,
                             outlineColor = outlineColor,
@@ -616,10 +664,22 @@ private fun VerticalTimeline(
                 }
 
                 slottedTasks.forEach { item ->
-                    val startMinutes = Duration.between(dayStart, item.effectiveStart).toMinutes().coerceAtLeast(0).toInt()
                     val durationMinutes = Duration.between(item.effectiveStart, item.effectiveEnd).toMinutes().coerceAtLeast(15).toInt()
-                    val topOffset = minuteHeight * startMinutes
-                    val height = (minuteHeight * durationMinutes).coerceAtLeast(slotHeight / 2f)
+                    
+                    // Вычисляем позицию относительно видимых часов
+                    val itemHour = item.effectiveStart.hour
+                    val itemHourIndex = hoursToShow.indexOf(itemHour)
+                    val itemMinutesInHour = item.effectiveStart.minute
+                    
+                    val topOffset = if (itemHourIndex >= 0) {
+                        // Позиция = индекс часа * высота слота + минуты в текущем часе * высота минуты
+                        visibleSlotHeight * itemHourIndex + visibleMinuteHeight * itemMinutesInHour
+                    } else {
+                        // Если час не видим, но задача есть (не должно происходить, так как мы фильтруем часы с задачами)
+                        // Показываем в начале первого видимого часа
+                        visibleSlotHeight * 0
+                    }
+                    val height = (visibleMinuteHeight * durationMinutes).coerceAtLeast(visibleSlotHeight / 2f)
                     val category = categories.find { it.id == item.task.categoryId }
                     val width = maxWidth / item.parallelCount
                     val xOffset = width * item.slotIndex
