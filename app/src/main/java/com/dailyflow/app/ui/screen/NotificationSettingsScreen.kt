@@ -39,9 +39,11 @@ fun NotificationSettingsScreen(
                 }
             )
         }
-    ) {
+    ) { paddingValues ->
         LazyColumn(
-            modifier = Modifier.padding(it).fillMaxSize(),
+            modifier = Modifier
+                .padding(top = paddingValues.calculateTopPadding())
+                .fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {

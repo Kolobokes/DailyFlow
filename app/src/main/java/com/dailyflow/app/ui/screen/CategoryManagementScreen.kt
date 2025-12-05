@@ -55,8 +55,10 @@ fun CategoryManagementScreen(navController: NavController, viewModel: CategoryMa
                 Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_category))
             }
         }
-    ) {
-        Column(modifier = Modifier.padding(it).padding(horizontal = 16.dp)) {
+    ) { paddingValues ->
+        Column(modifier = Modifier
+            .padding(top = paddingValues.calculateTopPadding())
+            .padding(horizontal = 16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Switch(checked = showArchived, onCheckedChange = { viewModel.toggleShowArchived(it) })
                 Spacer(modifier = Modifier.width(8.dp))

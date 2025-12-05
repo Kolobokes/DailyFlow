@@ -54,7 +54,7 @@ fun OverdueTasksScreen(navController: NavController, viewModel: HomeViewModel = 
             )
         }
     ) { paddingValues ->
-        LazyColumn(modifier = Modifier.padding(paddingValues)) {
+        LazyColumn(modifier = Modifier.padding(top = paddingValues.calculateTopPadding())) {
             if (groupedOverdueTasks.isEmpty()) {
                 item {
                     Text(

@@ -42,6 +42,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -104,7 +105,6 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltView
     var recurringDialogState by remember { mutableStateOf<RecurringActionDialogState?>(null) }
 
     val selectedLocalDate = selectedDate.toLocalDate()
-    val selectedKotlinDate = selectedLocalDate.toKotlinLocalDate()
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     val fileDateFormatter = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.ROOT) }
@@ -136,6 +136,146 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltView
     }
 
     Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = { viewModel.selectPreviousDay() }) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.previous_day))
+                        }
+                        var showDatePicker by remember { mutableStateOf(false) }
+                        val datePickerState = rememberDatePickerState(
+                            initialSelectedDateMillis = selectedLocalDate.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+                        )
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.weight(1f).clickable { showDatePicker = true }
+                            ) {
+                                val currentLocale = remember(context) {
+                                    val appLocales = AppCompatDelegate.getApplicationLocales()
+                                    if (!appLocales.isEmpty) appLocales.get(0) ?: Locale.getDefault() else Locale.getDefault()
+                                }
+
+                                val isToday = selectedLocalDate == LocalDate.now()
+                                val dayOfWeek = selectedLocalDate.dayOfWeek.getDisplayName(TextStyle.FULL, currentLocale)
+                                val dateText = selectedDate.format(
+                                    DateTimeFormatter.ofPattern("dd MMMM yyyy", currentLocale)
+                                )
+
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                                    Text(
+                                        text = dateText,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 20.sp,
+                                        color = if (isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    if (isToday) {
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Box(
+                                            modifier = Modifier.size(8.dp).background(MaterialTheme.colorScheme.primary, CircleShape)
+                                        )
+                                    }
+                                }
+                                Text(
+                                    text = dayOfWeek,
+                                    fontWeight = FontWeight.Normal,
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            Icon(
+                                imageVector = if (showCalendar) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                contentDescription = if (showCalendar) stringResource(R.string.collapse_calendar) else stringResource(R.string.expand_calendar),
+                                modifier = Modifier.clickable { showCalendar = !showCalendar }
+                            )
+                        }
+
+                        if (showDatePicker) {
+                            val currentLocale = remember(context) {
+                                val appLocales = AppCompatDelegate.getApplicationLocales()
+                                if (!appLocales.isEmpty) appLocales.get(0) ?: Locale.getDefault() else Locale.getDefault()
+                            }
+
+                            val localizedContext = remember(context, currentLocale) {
+                                val config = Configuration(context.resources.configuration)
+                                config.setLocale(currentLocale)
+                                context.createConfigurationContext(config)
+                            }
+                            val localizedConfiguration = remember(localizedContext) { localizedContext.resources.configuration }
+
+                            DatePickerDialog(
+                                onDismissRequest = { showDatePicker = false },
+                                confirmButton = {
+                                    TextButton(onClick = {
+                                        datePickerState.selectedDateMillis?.let {
+                                            val selected = java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+                                            viewModel.updateSelectedDate(selected.atStartOfDay())
+                                        }
+                                        showDatePicker = false
+                                    }) {
+                                        Text(stringResource(R.string.ok))
+                                    }
+                                },
+                                dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text(stringResource(R.string.cancel)) } }
+                            ) {
+                                CompositionLocalProvider(
+                                    LocalContext provides localizedContext,
+                                    LocalConfiguration provides localizedConfiguration
+                                ) {
+                                    DatePicker(state = datePickerState)
+                                }
+                            }
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = { viewModel.selectNextDay() }) {
+                                Icon(Icons.Default.ArrowForward, contentDescription = stringResource(R.string.next_day))
+                            }
+                            var menuExpanded by remember { mutableStateOf(false) }
+                            Box {
+                                IconButton(onClick = { menuExpanded = true }) {
+                                    Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.menu))
+                                }
+                                DropdownMenu(
+                                    expanded = menuExpanded,
+                                    onDismissRequest = { menuExpanded = false }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.export_daily_plan)) },
+                                        onClick = {
+                                            coroutineScope.launch {
+                                                val exportText = runCatching {
+                                                    viewModel.exportDailyPlan(selectedLocalDate)
+                                                }.onFailure {
+                                                    Toast.makeText(context, context.getString(R.string.file_save_error), Toast.LENGTH_SHORT).show()
+                                                }.getOrNull() ?: return@launch
+                                                pendingDailyPlanExport = exportText
+                                                val fileName = "plan_${selectedLocalDate.format(fileDateFormatter)}.txt"
+                                                dailyPlanExportLauncher.launch(fileName)
+                                            }
+                                            menuExpanded = false
+                                        },
+                                        leadingIcon = { Icon(Icons.Default.FileDownload, contentDescription = null) }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            )
+        },
         floatingActionButton = {
             FloatingActionButton(onClick = {
                 navController.navigate(
@@ -146,150 +286,7 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltView
             }
         }
     ) { paddingValues ->
-        Column(modifier = Modifier.padding(paddingValues)) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = { viewModel.selectPreviousDay() }) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.previous_day))
-                }
-                var showDatePicker by remember { mutableStateOf(false) }
-                val datePickerState = rememberDatePickerState(
-                    initialSelectedDateMillis = selectedLocalDate.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
-                )
-                
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.Start,
-                        modifier = Modifier
-                            .padding(end = 8.dp)
-                            .clickable { showDatePicker = true }
-                    ) {
-                        val currentLocale = remember(context) { 
-                            val appLocales = AppCompatDelegate.getApplicationLocales()
-                            if (!appLocales.isEmpty) appLocales.get(0) ?: Locale.getDefault() else Locale.getDefault()
-                        }
-                        
-                        val isToday = selectedLocalDate == LocalDate.now()
-                        val dayOfWeek = selectedLocalDate.dayOfWeek.getDisplayName(TextStyle.FULL, currentLocale)
-                        val dateText = selectedDate.format(
-                            DateTimeFormatter.ofPattern("dd MMMM yyyy", currentLocale)
-                        )
-                        
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                text = dateText,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 20.sp,
-                                color = if (isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                            )
-                            if (isToday) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(8.dp)
-                                        .background(
-                                            MaterialTheme.colorScheme.primary,
-                                            shape = CircleShape
-                                        )
-                                )
-                            }
-                        }
-                        Text(
-                            text = dayOfWeek,
-                            fontWeight = FontWeight.Normal,
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                        )
-                    }
-                    Icon(
-                        imageVector = if (showCalendar) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                        contentDescription = if (showCalendar) stringResource(R.string.collapse_calendar) else stringResource(R.string.expand_calendar),
-                        modifier = Modifier.clickable { showCalendar = !showCalendar }
-                    )
-                }
-                
-                if (showDatePicker) {
-                    val currentLocale = remember(context) { 
-                        val appLocales = AppCompatDelegate.getApplicationLocales()
-                        if (!appLocales.isEmpty) appLocales.get(0) ?: Locale.getDefault() else Locale.getDefault()
-                    }
-                    
-                    val localizedContext = remember(context, currentLocale) {
-                        val config = Configuration(context.resources.configuration)
-                        config.setLocale(currentLocale)
-                        context.createConfigurationContext(config)
-                    }
-                    val localizedConfiguration = remember(localizedContext) { localizedContext.resources.configuration }
-                    
-                    DatePickerDialog(
-                        onDismissRequest = { showDatePicker = false },
-                        confirmButton = {
-                            TextButton(onClick = {
-                                datePickerState.selectedDateMillis?.let {
-                                    val selectedDate = java.time.Instant.ofEpochMilli(it)
-                                        .atZone(java.time.ZoneId.systemDefault())
-                                        .toLocalDate()
-                                    viewModel.updateSelectedDate(selectedDate.atStartOfDay())
-                                }
-                                showDatePicker = false
-                            }) {
-                                Text(stringResource(R.string.ok))
-                            }
-                        },
-                        dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text(stringResource(R.string.cancel)) } }
-                    ) {
-                        CompositionLocalProvider(
-                            LocalContext provides localizedContext,
-                            LocalConfiguration provides localizedConfiguration
-                        ) {
-                            DatePicker(state = datePickerState)
-                        }
-                    }
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { viewModel.selectNextDay() }) {
-                        Icon(Icons.Default.ArrowForward, contentDescription = stringResource(R.string.next_day))
-                    }
-                    var menuExpanded by remember { mutableStateOf(false) }
-                    Box {
-                        IconButton(onClick = { menuExpanded = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.menu))
-                        }
-                        DropdownMenu(
-                            expanded = menuExpanded,
-                            onDismissRequest = { menuExpanded = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.export_daily_plan)) },
-                                onClick = {
-                                    coroutineScope.launch {
-                                        val exportText = runCatching {
-                                            viewModel.exportDailyPlan(selectedLocalDate)
-                                        }.onFailure {
-                                            Toast.makeText(context, context.getString(R.string.file_save_error), Toast.LENGTH_SHORT).show()
-                                        }.getOrNull() ?: return@launch
-                                        pendingDailyPlanExport = exportText
-                                        val fileName = "plan_${selectedLocalDate.format(fileDateFormatter)}.txt"
-                                        dailyPlanExportLauncher.launch(fileName)
-                                    }
-                                    menuExpanded = false
-                                },
-                                leadingIcon = { Icon(Icons.Default.FileDownload, contentDescription = null) }
-                            )
-                        }
-                    }
-                }
-            }
-
+        Column(modifier = Modifier.padding(top = paddingValues.calculateTopPadding())) {
             if (showCalendar) {
                 val currentLocale = remember(context) { 
                     val appLocales = AppCompatDelegate.getApplicationLocales()
@@ -298,7 +295,6 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltView
                 
                 val dayNames = remember(currentLocale) {
                     val days = java.time.DayOfWeek.values()
-                    // Shift to start with Monday if needed, but DayOfWeek already starts with Monday (ordinal 0)
                     days.map { day ->
                         day.getDisplayName(TextStyle.SHORT, currentLocale)
                     }
@@ -312,7 +308,7 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltView
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     dayNames.forEachIndexed { index, label ->
-                        val isWeekend = index >= 5 // DayOfWeek.SATURDAY (5) and SUNDAY (6)
+                        val isWeekend = index >= 5
                         Text(
                             text = label,
                             style = MaterialTheme.typography.bodySmall,
@@ -323,7 +319,7 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltView
                 }
 
                 Kalendar(
-                    currentDay = selectedKotlinDate,
+                    currentDay = selectedLocalDate.toKotlinLocalDate(),
                     kalendarType = KalendarType.Firey,
                     showLabel = false,
                     events = KalendarEvents(
@@ -501,6 +497,30 @@ private fun VerticalTimeline(
         }
     }
 
+    val isToday = selectedDate == currentDateTime.toLocalDate()
+    val currentHour = currentDateTime.hour
+
+    // Вычисляем список видимых часов (исключаем прошедшие пустые слоты для текущего дня)
+    // Используем tasks напрямую, чтобы избежать циклической зависимости
+    val visibleHours = remember(selectedDate, currentHour, tasks.size, isToday) {
+        val localDayStart = selectedDate.atStartOfDay()
+        val localDayEnd = localDayStart.plusDays(1)
+        (0..23).filter { hour ->
+            if (!isToday || hour >= currentHour) {
+                true // Показываем все будущие часы и текущий час
+            } else {
+                // Для прошедших часов проверяем, есть ли задачи
+                val hourStart = localDayStart.plusHours(hour.toLong())
+                val hourEnd = if (hour == 23) localDayEnd else hourStart.plusHours(1)
+                val hasTasks = tasks.any { task ->
+                    val start = task.startDateTime
+                    start != null && start >= hourStart && start < hourEnd
+                }
+                hasTasks // Показываем только если есть задачи
+            }
+        }
+    }
+
     data class TimelineTask(
         val task: com.dailyflow.app.data.model.Task,
         val effectiveStart: LocalDateTime,
@@ -540,23 +560,8 @@ private fun VerticalTimeline(
         slottedTasks.add(slotted)
     }
 
-    // Определяем, какие часы показывать для расчета общей высоты
-    val isToday = selectedDate == currentDateTime.toLocalDate()
-    val currentHour = if (isToday) currentDateTime.hour else -1
-    val hoursToShow = (0..23).filter { hour ->
-        if (!isToday) {
-            true
-        } else {
-            val hourStart = dayStart.plusHours(hour.toLong())
-            val hourEnd = if (hour == 23) dayEnd else hourStart.plusHours(1)
-            val hasTasks = slottedTasks.any { 
-                it.effectiveStart >= hourStart && it.effectiveStart < hourEnd
-            }
-            hour >= currentHour || hasTasks
-        }
-    }
-    val visibleHourCount = hoursToShow.size
-    val totalHeight = hourHeight * visibleHourCount
+    val totalVisibleHours = visibleHours.size
+    val totalHeight = hourHeight * totalVisibleHours
 
     Box(
         modifier = Modifier
@@ -574,14 +579,11 @@ private fun VerticalTimeline(
                     .width(64.dp)
                     .fillMaxHeight()
             ) {
-                // Вычисляем высоту для каждого видимого часа
-                val visibleHourHeight = if (visibleHourCount > 0) totalHeight / visibleHourCount else hourHeight
-                
-                hoursToShow.forEach { hour ->
+                visibleHours.forEach { hour ->
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(visibleHourHeight),
+                            .height(hourHeight),
                         contentAlignment = Alignment.TopEnd
                     ) {
                         Text(
@@ -602,29 +604,24 @@ private fun VerticalTimeline(
                     .fillMaxHeight()
             ) {
                 val density = LocalDensity.current
-                val slotHeight = maxHeight / 24f
+                val slotHeight = maxHeight / totalVisibleHours
                 val minuteHeight = slotHeight / 60f
                 val outlineColor = MaterialTheme.colorScheme.outlineVariant
-                
-                // Вычисляем высоту для каждого видимого часа
-                val visibleSlotHeight = if (visibleHourCount > 0) maxHeight / visibleHourCount else slotHeight
-                val visibleMinuteHeight = visibleSlotHeight / 60f
-                
                 val minuteHeightPx = with(density) { minuteHeight.toPx() }
                 val slotHeightPx = with(density) { slotHeight.toPx() }
-                val visibleSlotHeightPx = with(density) { visibleSlotHeight.toPx() }
-                val visibleMinuteHeightPx = with(density) { visibleMinuteHeight.toPx() }
-                
                 var autoScrolled by remember(selectedDate) { mutableStateOf(false) }
 
-                LaunchedEffect(selectedDate, maxHeight, autoScrolled, visibleHourCount, hoursToShow, currentHour) {
+                // Вычисляем смещение для скрытых слотов (сколько часов скрыто до первого видимого)
+                val firstVisibleHour = visibleHours.firstOrNull() ?: 0
+                val hiddenHoursBeforeFirst = firstVisibleHour
+
+                LaunchedEffect(selectedDate, maxHeight, autoScrolled, visibleHours) {
                     if (!autoScrolled && maxHeight > 0.dp) {
-                        if (selectedDate == currentDateTime.toLocalDate() && hoursToShow.contains(currentHour)) {
-                            // Находим индекс текущего часа в списке видимых часов
-                            val currentHourIndex = hoursToShow.indexOf(currentHour)
-                            val minutes = currentDateTime.minute
-                            val visibleMinuteHeightPx = with(density) { visibleMinuteHeight.toPx() }
-                            val targetPx = ((currentHourIndex * visibleSlotHeightPx) + (visibleMinuteHeightPx * minutes) - visibleSlotHeightPx).toInt().coerceAtLeast(0)
+                        if (selectedDate == currentDateTime.toLocalDate()) {
+                            val minutes = currentDateTime.hour * 60 + currentDateTime.minute
+                            // Учитываем смещение из-за скрытых слотов
+                            val adjustedMinutes = minutes - (hiddenHoursBeforeFirst * 60)
+                            val targetPx = (minuteHeightPx * adjustedMinutes.coerceAtLeast(0) - slotHeightPx).toInt().coerceAtLeast(0)
                             scrollState.scrollTo(targetPx)
                         } else {
                             scrollState.scrollTo(0)
@@ -634,25 +631,23 @@ private fun VerticalTimeline(
                 }
 
                 Column(modifier = Modifier.matchParentSize()) {
-                    
-                    hoursToShow.forEach { hour ->
+                    visibleHours.forEach { hour ->
                         val hourStart = dayStart.plusHours(hour.toLong())
                         val hourEnd = if (hour == 23) dayEnd else hourStart.plusHours(1)
                         // Проверяем, есть ли задачи, которые полностью занимают этот час
                         // Задача считается занимающей слот, если она начинается в этом часе
                         val occupiedTasks = slottedTasks.filter { 
                             val taskStart = it.effectiveStart
-                            val taskEnd = it.effectiveEnd
-                            // Задача занимает слот, если она начинается в этом часе ИЛИ продолжается с предыдущего часа
-                            // Но для пустого слота показываем кнопку добавления, если нет задач, начинающихся именно в этом часе
+                            // Задача занимает слот, если она начинается в этом часе
                             taskStart >= hourStart && taskStart < hourEnd
                         }
                         val occupied = occupiedTasks.isNotEmpty()
+                        
                         val slotColor = occupiedTasks.firstOrNull()?.color
                         HourSlotBox(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(visibleSlotHeight),
+                                .height(slotHeight),
                             showAdd = !occupied,
                             hour = hour,
                             outlineColor = outlineColor,
@@ -664,30 +659,25 @@ private fun VerticalTimeline(
                 }
 
                 slottedTasks.forEach { item ->
-                    val durationMinutes = Duration.between(item.effectiveStart, item.effectiveEnd).toMinutes().coerceAtLeast(15).toInt()
-                    
-                    // Вычисляем позицию относительно видимых часов
-                    val itemHour = item.effectiveStart.hour
-                    val itemHourIndex = hoursToShow.indexOf(itemHour)
-                    val itemMinutesInHour = item.effectiveStart.minute
-                    
-                    val topOffset = if (itemHourIndex >= 0) {
-                        // Позиция = индекс часа * высота слота + минуты в текущем часе * высота минуты
-                        visibleSlotHeight * itemHourIndex + visibleMinuteHeight * itemMinutesInHour
-                    } else {
-                        // Если час не видим, но задача есть (не должно происходить, так как мы фильтруем часы с задачами)
-                        // Показываем в начале первого видимого часа
-                        visibleSlotHeight * 0
+                    val taskHour = item.effectiveStart.hour
+                    // Показываем задачу только если она начинается в видимом часе
+                    if (!visibleHours.contains(taskHour)) {
+                        return@forEach
                     }
-                    val height = (visibleMinuteHeight * durationMinutes).coerceAtLeast(visibleSlotHeight / 2f)
+                    
+                    val startMinutes = Duration.between(dayStart, item.effectiveStart).toMinutes().coerceAtLeast(0).toInt()
+                    // Вычисляем смещение: сколько минут в скрытых слотах до начала задачи
+                    val hiddenMinutesBeforeTask = (0 until taskHour).sumOf { hiddenHour ->
+                        if (visibleHours.contains(hiddenHour)) 0L else 60L
+                    }.toInt()
+                    val adjustedStartMinutes = startMinutes - hiddenMinutesBeforeTask
+                    val durationMinutes = Duration.between(item.effectiveStart, item.effectiveEnd).toMinutes().coerceAtLeast(15).toInt()
+                    val topOffset = minuteHeight * adjustedStartMinutes.coerceAtLeast(0).toFloat()
+                    val height = (minuteHeight * durationMinutes.toFloat()).coerceAtLeast(slotHeight / 2f)
                     val category = categories.find { it.id == item.task.categoryId }
                     val width = maxWidth / item.parallelCount
                     val xOffset = width * item.slotIndex
-                    val statusBackground = when (item.task.status) {
-                        TaskStatus.COMPLETED -> Color(0xFF4CAF50).copy(alpha = 0.15f)
-                        TaskStatus.CANCELLED -> Color(0xFFE53935).copy(alpha = 0.15f)
-                        TaskStatus.PENDING -> item.color.copy(alpha = 0.6f)
-                    }
+                    
                     Box(
                         modifier = Modifier
                             .width(width)

@@ -319,7 +319,7 @@ fun TaskDetailScreen(
                 }
             )
         }
-    ) {
+    ) { paddingValues ->
         if (uiState.isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
@@ -328,7 +328,7 @@ fun TaskDetailScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(it)
+                    .padding(top = paddingValues.calculateTopPadding())
                     .verticalScroll(contentScrollState)
                     .imePadding()
                     .padding(16.dp),

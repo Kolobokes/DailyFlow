@@ -103,11 +103,11 @@ fun TasksScreen(
                 }
             )
         }
-    ) {
+    ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(it)
+                .padding(top = paddingValues.calculateTopPadding())
                 .padding(horizontal = 16.dp)
         ) {
             if (showDatePicker) {
@@ -136,8 +136,11 @@ fun TasksScreen(
             }
             
             LazyRow(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 item { FilterChip(selected = statusFilter == TasksViewModel.StatusFilter.ALL, onClick = { viewModel.setStatusFilter(TasksViewModel.StatusFilter.ALL) }, label = { Text(stringResource(R.string.filter_all)) }) }
                 item { FilterChip(selected = statusFilter == TasksViewModel.StatusFilter.OVERDUE, onClick = { viewModel.setStatusFilter(TasksViewModel.StatusFilter.OVERDUE) }, label = { Text(stringResource(R.string.filter_overdue)) }) }
@@ -145,14 +148,23 @@ fun TasksScreen(
                 item { FilterChip(selected = statusFilter == TasksViewModel.StatusFilter.CANCELLED, onClick = { viewModel.setStatusFilter(TasksViewModel.StatusFilter.CANCELLED) }, label = { Text(stringResource(R.string.filter_cancelled)) }) }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
             if (groupedTasks.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
                     Text(stringResource(R.string.no_tasks))
                 }
             } else {
-                LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    state = listState,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     groupedTasks.forEach { (date, tasks) ->
                         stickyHeader {
                             Row(

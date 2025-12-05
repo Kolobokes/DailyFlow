@@ -399,13 +399,13 @@ fun NoteDetailScreen(
                 }
             )
         }
-    ) {
+    ) { paddingValues ->
         val scrollState = rememberScrollState()
         
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(it)
+                .padding(top = paddingValues.calculateTopPadding())
                 .imePadding()
                 .verticalScroll(scrollState)
                 .padding(16.dp),

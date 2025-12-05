@@ -15,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -88,123 +89,124 @@ fun SettingsScreen(
         )
     }
     
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        item {
-            Text(
-                text = stringResource(R.string.nav_settings),
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.nav_settings)) }
             )
         }
-        
-        // Privacy section
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
+    ) { paddingValues ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = paddingValues.calculateTopPadding())
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            // Privacy section
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(
-                        text = stringResource(R.string.settings_privacy_title),
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    if (!privacyAccepted) {
-                        PrivacyConsentCard(
-                            onAccept = { viewModel.acceptPrivacyPolicy() }
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.settings_privacy_title),
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold
                         )
-                    } else {
-                        Text(stringResource(R.string.settings_privacy_accepted), style = MaterialTheme.typography.bodyMedium)
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        if (!privacyAccepted) {
+                            PrivacyConsentCard(
+                                onAccept = { viewModel.acceptPrivacyPolicy() }
+                            )
+                        } else {
+                            Text(stringResource(R.string.settings_privacy_accepted), style = MaterialTheme.typography.bodyMedium)
+                        }
                     }
                 }
             }
-        }
-        
-        // App settings section
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
+            
+            // App settings section
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(
-                        text = stringResource(R.string.settings_app_settings_title),
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    SettingItem(
-                        icon = Icons.Default.Category,
-                        title = stringResource(R.string.settings_categories_title),
-                        subtitle = stringResource(R.string.settings_categories_subtitle),
-                        onClick = { navController.navigate(Screen.CategoryManagement.route) }
-                    )
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.settings_app_settings_title),
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        SettingItem(
+                            icon = Icons.Default.Category,
+                            title = stringResource(R.string.settings_categories_title),
+                            subtitle = stringResource(R.string.settings_categories_subtitle),
+                            onClick = { navController.navigate(Screen.CategoryManagement.route) }
+                        )
 
-                    SettingItem(
-                        icon = Icons.Default.Notifications,
-                        title = stringResource(R.string.settings_notifications_title),
-                        subtitle = stringResource(R.string.settings_notifications_subtitle),
-                        onClick = { navController.navigate(Screen.NotificationSettings.route) }
-                    )
-                    
-                    SettingItem(
-                        icon = Icons.Default.Language,
-                        title = stringResource(R.string.settings_language),
-                        subtitle = if (currentLanguage == "ru") "Русский" else "English",
-                        onClick = { navController.navigate(Screen.LanguageSelection.route) }
-                    )
+                        SettingItem(
+                            icon = Icons.Default.Notifications,
+                            title = stringResource(R.string.settings_notifications_title),
+                            subtitle = stringResource(R.string.settings_notifications_subtitle),
+                            onClick = { navController.navigate(Screen.NotificationSettings.route) }
+                        )
+                        
+                        SettingItem(
+                            icon = Icons.Default.Language,
+                            title = stringResource(R.string.settings_language),
+                            subtitle = if (currentLanguage == "ru") "Русский" else "English",
+                            onClick = { navController.navigate(Screen.LanguageSelection.route) }
+                        )
+                    }
                 }
             }
-        }
-        
-        // About section
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
+            
+            // About section
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(
-                        text = stringResource(R.string.settings_about_title),
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    SettingItem(
-                        icon = Icons.Default.Info,
-                        title = stringResource(R.string.settings_version_title),
-                        subtitle = BuildConfig.VERSION_NAME,
-                        onClick = { /* No action needed */ }
-                    )
-                    
-                    SettingItem(
-                        icon = Icons.Default.Help,
-                        title = stringResource(R.string.settings_help_title),
-                        subtitle = stringResource(R.string.settings_help_subtitle),
-                        onClick = { showHelpDialog = true }
-                    )
-                    
-                    SettingItem(
-                        icon = Icons.Default.PrivacyTip,
-                        title = stringResource(R.string.settings_privacy_policy_title),
-                        subtitle = stringResource(R.string.settings_privacy_policy_subtitle),
-                        onClick = { showPrivacyDialog = true }
-                    )
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.settings_about_title),
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        SettingItem(
+                            icon = Icons.Default.Info,
+                            title = stringResource(R.string.settings_version_title),
+                            subtitle = BuildConfig.VERSION_NAME,
+                            onClick = { /* No action needed */ }
+                        )
+                        
+                        SettingItem(
+                            icon = Icons.Default.Help,
+                            title = stringResource(R.string.settings_help_title),
+                            subtitle = stringResource(R.string.settings_help_subtitle),
+                            onClick = { showHelpDialog = true }
+                        )
+                        
+                        SettingItem(
+                            icon = Icons.Default.PrivacyTip,
+                            title = stringResource(R.string.settings_privacy_policy_title),
+                            subtitle = stringResource(R.string.settings_privacy_policy_subtitle),
+                            onClick = { showPrivacyDialog = true }
+                        )
+                    }
                 }
             }
         }
