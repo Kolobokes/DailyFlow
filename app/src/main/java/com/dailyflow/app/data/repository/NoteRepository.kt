@@ -25,5 +25,5 @@ class NoteRepository @Inject constructor(
     suspend fun deleteNote(note: Note) = noteDao.deleteNote(note)
     
     suspend fun updateNoteCompletion(id: String, isCompleted: Boolean) = 
-        noteDao.updateNoteCompletion(id, isCompleted)
+        noteDao.updateNoteCompletion(id, isCompleted, LocalDateTime.now())
 }

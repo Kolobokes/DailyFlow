@@ -110,7 +110,8 @@ class NoteDetailViewModel @Inject constructor(
                     isCompleted = isCompleted,
                     isChecklist = isChecklist,
                     checklistItems = checklistItems,
-                    attachedFileUri = attachedFileName
+                    attachedFileUri = attachedFileName,
+                    updatedAt = LocalDateTime.now()
                 )
             }
             if (noteId == null) {

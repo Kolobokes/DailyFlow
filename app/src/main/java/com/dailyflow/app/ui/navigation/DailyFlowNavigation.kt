@@ -1,6 +1,13 @@
 package com.dailyflow.app.ui.navigation
 
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.automirrored.filled.Note
@@ -88,34 +95,40 @@ fun DailyFlowNavigation(
         BottomNavItem(stringResource(R.string.nav_settings), Icons.Default.Settings, Screen.Settings.route)
     )
 
+    val currentRoute = currentDestination?.route?.substringBefore("?")
+    val showBottomBar = currentRoute in bottomNavItems.map { it.route }
+
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         bottomBar = {
-            NavigationBar {
-                val showLabels = bottomNavItems.all { item ->
-                    val result = textMeasurer.measure(text = item.title, style = MaterialTheme.typography.labelMedium)
-                    (result.size.width / density) <= 64f
-                }
-                bottomNavItems.forEach { item ->
-                    NavigationBarItem(
-                        icon = { Icon(item.icon, contentDescription = item.title) },
-                        label = { if (showLabels) Text(item.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        selected = currentDestination?.hierarchy?.any { destination ->
-                            destination.route?.substringBefore("?") == item.route
-                        } == true,
-                        onClick = {
-                            val targetRoute = when (item.route) {
-                                Screen.Notes.route -> Screen.Notes.createRoute()
-                                else -> item.route
-                            }
-                            navController.navigate(targetRoute) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
+            if (showBottomBar) {
+                NavigationBar {
+                    val showLabels = bottomNavItems.all { item ->
+                        val result = textMeasurer.measure(text = item.title, style = MaterialTheme.typography.labelMedium)
+                        (result.size.width / density) <= 64f
+                    }
+                    bottomNavItems.forEach { item ->
+                        NavigationBarItem(
+                            icon = { Icon(item.icon, contentDescription = item.title) },
+                            label = { if (showLabels) Text(item.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                            selected = currentDestination?.hierarchy?.any { destination ->
+                                destination.route?.substringBefore("?") == item.route
+                            } == true,
+                            onClick = {
+                                val targetRoute = when (item.route) {
+                                    Screen.Notes.route -> Screen.Notes.createRoute()
+                                    else -> item.route
                                 }
-                                launchSingleTop = true
-                                restoreState = true
+                                navController.navigate(targetRoute) {
+                                    popUpTo(navController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
                             }
-                        }
-                    )
+                        )
+                    }
                 }
             }
         }
@@ -123,7 +136,9 @@ fun DailyFlowNavigation(
         NavHost(
             navController = navController,
             startDestination = Screen.Home.route,
-            modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())
+            modifier = Modifier
+                .padding(bottom = innerPadding.calculateBottomPadding())
+                .consumeWindowInsets(androidx.compose.foundation.layout.PaddingValues(bottom = innerPadding.calculateBottomPadding()))
         ) {
             composable(Screen.Home.route) {
                 HomeScreen(navController = navController)

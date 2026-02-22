@@ -26,6 +26,6 @@ interface NoteDao {
     @Delete
     suspend fun deleteNote(note: Note)
     
-    @Query("UPDATE notes SET isCompleted = :isCompleted WHERE id = :id")
-    suspend fun updateNoteCompletion(id: String, isCompleted: Boolean)
+    @Query("UPDATE notes SET isCompleted = :isCompleted, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun updateNoteCompletion(id: String, isCompleted: Boolean, updatedAt: LocalDateTime)
 }

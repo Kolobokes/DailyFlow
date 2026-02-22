@@ -5,14 +5,14 @@ import android.content.res.Configuration
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.activity.compose.BackHandler
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
@@ -31,6 +31,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextDecoration
@@ -358,7 +359,11 @@ fun NoteDetailScreen(
         )
     }
 
+    val scrollState = rememberScrollState()
+    var focusTargetId by remember { mutableStateOf<String?>(null) }
+
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             TopAppBar(
                 title = { Text(if (uiState.isNewNote) stringResource(R.string.new_note) else stringResource(R.string.edit_note)) },
@@ -398,19 +403,17 @@ fun NoteDetailScreen(
                     }
                 }
             )
-        }
+        },
     ) { paddingValues ->
-        val scrollState = rememberScrollState()
-        
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = paddingValues.calculateTopPadding())
-                .imePadding()
+                .padding(paddingValues)
                 .verticalScroll(scrollState)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // index 0: title
             OutlinedTextField(
                 value = title,
                 onValueChange = { title = it },
@@ -418,6 +421,7 @@ fun NoteDetailScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
+            // index 1: category
             ExposedDropdownMenuBox(expanded = categoryMenuExpanded, onExpandedChange = { categoryMenuExpanded = !categoryMenuExpanded }) {
                 OutlinedTextField(
                     value = selectedCategory?.name ?: "",
@@ -440,6 +444,7 @@ fun NoteDetailScreen(
                 }
             }
 
+            // index 2: checklist switch
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -461,69 +466,50 @@ fun NoteDetailScreen(
             }
 
             if (isChecklist) {
-                val listState = rememberLazyListState()
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    LazyColumn(
-                        state = listState,
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 400.dp)
-                    ) {
-                        itemsIndexed(checklistItems, key = { _, item -> item.id }) { index, item ->
-                            ChecklistItemRow(
-                                item = item,
-                                onCheckedChange = { checked -> checklistItems[index] = item.copy(isChecked = checked) },
-                                onTextChange = { text -> checklistItems[index] = item.copy(text = text) },
-                                onRemove = { checklistItems.removeAt(index) }
-                            )
+                // checklist items
+                checklistItems.forEachIndexed { index, item ->
+                    ChecklistItemRow(
+                        item = item,
+                        onCheckedChange = { checked -> checklistItems[index] = item.copy(isChecked = checked) },
+                        onTextChange = { text -> checklistItems[index] = item.copy(text = text) },
+                        onRemove = { checklistItems.removeAt(index) },
+                        requestFocus = item.id == focusTargetId,
+                        onFocusConsumed = { focusTargetId = null },
+                        scrollState = scrollState
+                    )
+                }
+                OutlinedButton(
+                    onClick = {
+                        val newItem = ChecklistItem(UUID.randomUUID().toString(), "", false)
+                        checklistItems.add(newItem)
+                        focusTargetId = newItem.id
+                        coroutineScope.launch {
+                            kotlinx.coroutines.delay(100)
+                            scrollState.animateScrollTo(scrollState.maxValue)
                         }
-                    }
-                    OutlinedButton(
-                        onClick = {
-                            val newIndex = checklistItems.size
-                            checklistItems.add(ChecklistItem(UUID.randomUUID().toString(), "", false))
-                            coroutineScope.launch {
-                                kotlinx.coroutines.delay(150)
-                                if (newIndex < listState.layoutInfo.totalItemsCount) {
-                                    listState.animateScrollToItem(newIndex)
-                                }
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                                    Text(stringResource(R.string.add_item))
-                                }
-                            }
-                        } else {
-                            OutlinedTextField(
-                                value = content,
-                                onValueChange = { content = it },
-                                label = { Text(stringResource(R.string.note_content)) },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(min = 200.dp)
-                        .onFocusChanged { focusState ->
-                            if (focusState.isFocused) {
-                                coroutineScope.launch {
-                                    // Задержка для появления клавиатуры
-                                    kotlinx.coroutines.delay(300)
-                                    // Прокручиваем немного вниз от текущей позиции, чтобы поле было видно
-                                    val currentScroll = scrollState.value
-                                    val targetScroll = (currentScroll + 150).coerceAtMost(scrollState.maxValue)
-                                    scrollState.animateScrollTo(targetScroll)
-                                }
-                            }
-                        },
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(stringResource(R.string.add_item))
+                }
+            } else {
+                // index 3: content text field
+                OutlinedTextField(
+                    value = content,
+                    onValueChange = { content = it },
+                    label = { Text(stringResource(R.string.note_content)) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 200.dp),
                     minLines = 5,
                     maxLines = Int.MAX_VALUE,
                     singleLine = false
                 )
             }
-            
-            // Секция прикрепленного файла
+
+            // attached file section
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -545,7 +531,6 @@ fun NoteDetailScreen(
                         }
                     }
                 }
-                
                 if (attachedFileName != null) {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -578,7 +563,8 @@ fun NoteDetailScreen(
                     }
                 }
             }
-            
+
+            // completed checkbox
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -587,7 +573,8 @@ fun NoteDetailScreen(
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(stringResource(R.string.task_status_completed), modifier = Modifier.weight(1f))
             }
-            
+
+            // date picker button
             Button(
                 onClick = { showDatePicker = true },
                 modifier = Modifier.fillMaxWidth()
@@ -597,14 +584,16 @@ fun NoteDetailScreen(
                 Text(text = dateTime?.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")) ?: stringResource(R.string.select_date))
             }
 
+            // save button
             Button(
                 onClick = { saveAndClose() },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(stringResource(R.string.save))
             }
+
+            // created/updated timestamps
             if (!uiState.isNewNote && uiState.note != null) {
-                Spacer(modifier = Modifier.height(16.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
@@ -621,6 +610,8 @@ fun NoteDetailScreen(
                     )
                 }
             }
+            
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
@@ -649,48 +640,39 @@ private fun parseLegacyChecklist(content: String): List<ChecklistItem> =
         }
 
 @Composable
-private fun ChecklistEditor(
-    items: List<ChecklistItem>,
-    onUpdateItem: (Int, ChecklistItem) -> Unit,
-    onRemoveItem: (Int) -> Unit,
-    onAddItem: () -> Unit
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f, fill = false)
-        ) {
-            itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
-                ChecklistItemRow(
-                    item = item,
-                    onCheckedChange = { checked -> onUpdateItem(index, item.copy(isChecked = checked)) },
-                    onTextChange = { text -> onUpdateItem(index, item.copy(text = text)) },
-                    onRemove = { onRemoveItem(index) }
-                )
-            }
-        }
-        OutlinedButton(
-            onClick = onAddItem,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Icon(Icons.Default.Add, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(stringResource(R.string.add_item))
-        }
-    }
-}
-
-@Composable
 private fun ChecklistItemRow(
     item: ChecklistItem,
     onCheckedChange: (Boolean) -> Unit,
     onTextChange: (String) -> Unit,
-    onRemove: () -> Unit
+    onRemove: () -> Unit,
+    requestFocus: Boolean = false,
+    onFocusConsumed: () -> Unit = {},
+    scrollState: ScrollState
 ) {
+    val focusRequester = remember { FocusRequester() }
+    val coroutineScope = rememberCoroutineScope()
+    var lastHeight by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(requestFocus) {
+        if (requestFocus) {
+            kotlinx.coroutines.delay(50)
+            focusRequester.requestFocus()
+            onFocusConsumed()
+        }
+    }
+
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .onSizeChanged { size ->
+                if (lastHeight > 0 && size.height > lastHeight) {
+                    val delta = size.height - lastHeight
+                    coroutineScope.launch {
+                        scrollState.scrollBy(delta.toFloat())
+                    }
+                }
+                lastHeight = size.height
+            },
         verticalAlignment = Alignment.Top
     ) {
         Checkbox(
@@ -702,7 +684,9 @@ private fun ChecklistItemRow(
         OutlinedTextField(
             value = item.text,
             onValueChange = onTextChange,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .weight(1f)
+                .focusRequester(focusRequester),
             placeholder = { Text(stringResource(R.string.checklist_item_placeholder)) },
             textStyle = LocalTextStyle.current.copy(textDecoration = if (item.isChecked) TextDecoration.LineThrough else null),
             minLines = 1,
@@ -715,3 +699,5 @@ private fun ChecklistItemRow(
         }
     }
 }
+
+
