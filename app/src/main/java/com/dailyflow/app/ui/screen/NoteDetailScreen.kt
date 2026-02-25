@@ -53,7 +53,7 @@ import java.util.UUID
 
 import androidx.appcompat.app.AppCompatDelegate // Added import
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun NoteDetailScreen(
     navController: NavController,
@@ -363,7 +363,6 @@ fun NoteDetailScreen(
     var focusTargetId by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
-        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             TopAppBar(
                 title = { Text(if (uiState.isNewNote) stringResource(R.string.new_note) else stringResource(R.string.edit_note)) },
@@ -409,6 +408,7 @@ fun NoteDetailScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .imePadding() // Гарантирует, что Column поднимается над клавиатурой
                 .verticalScroll(scrollState)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -478,6 +478,8 @@ fun NoteDetailScreen(
                         scrollState = scrollState
                     )
                 }
+                
+                // Кнопка всегда в списке
                 OutlinedButton(
                     onClick = {
                         val newItem = ChecklistItem(UUID.randomUUID().toString(), "", false)
@@ -611,7 +613,9 @@ fun NoteDetailScreen(
                 }
             }
             
-            Spacer(modifier = Modifier.height(16.dp))
+            // Большой Spacer в конце, чтобы последний элемент (кнопка) 
+            // мог подняться достаточно высоко над клавиатурой при прокрутке
+            Spacer(modifier = Modifier.height(100.dp))
         }
     }
 }
@@ -699,5 +703,3 @@ private fun ChecklistItemRow(
         }
     }
 }
-
-
