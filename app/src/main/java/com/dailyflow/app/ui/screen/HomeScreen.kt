@@ -673,7 +673,7 @@ private fun VerticalTimeline(
                     val adjustedStartMinutes = startMinutes - hiddenMinutesBeforeTask
                     val durationMinutes = Duration.between(item.effectiveStart, item.effectiveEnd).toMinutes().coerceAtLeast(15).toInt()
                     val topOffset = minuteHeight * adjustedStartMinutes.coerceAtLeast(0).toFloat()
-                    val height = (minuteHeight * durationMinutes.toFloat()).coerceAtLeast(slotHeight / 2f)
+                    val height = (minuteHeight * durationMinutes.toFloat()).coerceAtLeast(48.dp)
                     val category = categories.find { it.id == item.task.categoryId }
                     val width = maxWidth / item.parallelCount
                     val xOffset = width * item.slotIndex
