@@ -82,6 +82,7 @@ class NoteDetailViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
             val finalNoteId = noteId ?: noteIdForNewNote ?: UUID.randomUUID().toString()
+            val now = LocalDateTime.now()
             
             // Если есть старый файл и он отличается от нового, удаляем старый
             val oldNote = _uiState.value.note
@@ -99,7 +100,9 @@ class NoteDetailViewModel @Inject constructor(
                     isCompleted = isCompleted,
                     isChecklist = isChecklist,
                     checklistItems = checklistItems,
-                    attachedFileUri = attachedFileName
+                    attachedFileUri = attachedFileName,
+                    createdAt = now,
+                    updatedAt = now
                 )
             } else {
                 _uiState.value.note!!.copy(
@@ -111,7 +114,7 @@ class NoteDetailViewModel @Inject constructor(
                     isChecklist = isChecklist,
                     checklistItems = checklistItems,
                     attachedFileUri = attachedFileName,
-                    updatedAt = LocalDateTime.now()
+                    updatedAt = now
                 )
             }
             if (noteId == null) {

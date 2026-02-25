@@ -50,6 +50,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.UUID
+import androidx.compose.ui.text.input.TextFieldValue
 
 import androidx.appcompat.app.AppCompatDelegate // Added import
 
@@ -62,7 +63,7 @@ fun NoteDetailScreen(
     val uiState by viewModel.uiState.collectAsState()
     val coroutineScope = rememberCoroutineScope()
     var title by remember { mutableStateOf("") }
-    var content by remember { mutableStateOf("") }
+    var content by remember { mutableStateOf(TextFieldValue("")) }
     var selectedCategory by remember { mutableStateOf<Category?>(null) }
     
     // Инициализируем категорию при загрузке или при изменении списка категорий
@@ -163,7 +164,7 @@ fun NoteDetailScreen(
                         val note = uiState.note
                         if (!uiState.isNewNote && note != null) {
                             title = note.title
-                            content = note.content
+                            content = TextFieldValue(note.content)
                             selectedCategory = uiState.categories.find { it.id == note.categoryId }
                             dateTime = note.dateTime
                             isCompleted = note.isCompleted
@@ -215,10 +216,10 @@ fun NoteDetailScreen(
     
     // Функция для проверки наличия изменений
     fun hasUnsavedChanges(): Boolean {
-        val currentContent = if (isChecklist) {
+        val currentContentString = if (isChecklist) {
             sanitizedChecklist(checklistItems).joinToString("\n") { "${it.isChecked},${it.text}" }
         } else {
-            content
+            content.text
         }
         val savedInitialContent = if (initialIsChecklist) {
             sanitizedChecklist(initialChecklistItems).joinToString("\n") { "${it.isChecked},${it.text}" }
@@ -227,7 +228,7 @@ fun NoteDetailScreen(
         }
         
         return title != initialTitle ||
-                currentContent != savedInitialContent ||
+                currentContentString != savedInitialContent ||
                 selectedCategory?.id != initialCategory?.id ||
                 dateTime != initialDateTime ||
                 isCompleted != initialIsCompleted ||
@@ -253,7 +254,7 @@ fun NoteDetailScreen(
         keyboardController?.hide()
         viewModel.saveNote(
             title = title,
-            content = buildContent(isChecklist, content, checklistItems),
+            content = buildContent(isChecklist, content.text, checklistItems),
             categoryId = selectedCategory?.id,
             dateTime = dateTime,
             isCompleted = isCompleted,
@@ -453,13 +454,13 @@ fun NoteDetailScreen(
                 Text(stringResource(R.string.checklist))
                 Switch(checked = isChecklist, onCheckedChange = { checked ->
                     if (checked && !isChecklist) {
-                        if (checklistItems.isEmpty() && content.isNotBlank()) {
+                        if (checklistItems.isEmpty() && content.text.isNotBlank()) {
                             checklistItems.clear()
-                            checklistItems.addAll(content.lines().filter { it.isNotBlank() }.map { ChecklistItem(UUID.randomUUID().toString(), it, false) })
+                            checklistItems.addAll(content.text.lines().filter { it.isNotBlank() }.map { ChecklistItem(UUID.randomUUID().toString(), it, false) })
                         }
                     }
                     if (!checked && isChecklist) {
-                        content = checklistItems.joinToString("\n") { it.text }
+                        content = TextFieldValue(checklistItems.joinToString("\n") { it.text })
                     }
                     isChecklist = checked
                 })
